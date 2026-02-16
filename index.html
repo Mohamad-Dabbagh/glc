@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Defaults Challenge | AUS Sustainability</title>
+  <title>AUS Smart Defaults Challenge</title>
   <meta name="description" content="Residential Halls Sustainability Competition 2025-26">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -30,8 +30,8 @@
     // 🔴 CONFIGURATION
     // =====================================================
     const CONFIG = {
-      SMART_DEFAULTS_API: "https://script.google.com/macros/s/AKfycbzXKyI0jyDvlzXGce522pBybzn33mmOYWiXi8ZrmgwuKdumjZI1hX1FSz5eZsM8VoDvgg/exec",
-      SMART_DEFAULTS_FORM: "https://docs.google.com/forms/d/e/1FAIpQLSf5QGBOligt_emBLdADbw8l7OJgBLRWJdiOtL5EbDIPbthPqw/viewform",
+      API_URL: "https://script.google.com/macros/s/AKfycbzXKyI0jyDvlzXGce522pBybzn33mmOYWiXi8ZrmgwuKdumjZI1hX1FSz5eZsM8VoDvgg/exec",
+      FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSf5QGBOligt_emBLdADbw8l7OJgBLRWJdiOtL5EbDIPbthPqw/viewform",
     };
     // =====================================================
 
@@ -59,7 +59,6 @@
       'GHm': { bg: 'from-red-500 to-rose-600', light: 'bg-red-50', medium: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' },
       'MNm': { bg: 'from-cyan-500 to-sky-600', light: 'bg-cyan-50', medium: 'bg-cyan-100', text: 'text-cyan-700', border: 'border-cyan-300' },
       'PQm': { bg: 'from-indigo-500 to-violet-600', light: 'bg-indigo-50', medium: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-300' },
-      'Iw': { bg: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', medium: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300' },
     };
     const getHallColor = (hall) => hallColors[hall] || { bg: 'from-slate-500 to-slate-600', light: 'bg-slate-50', medium: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300' };
 
@@ -133,7 +132,6 @@
             <div className="flex items-center gap-3 text-right">
               <div className="text-center hidden sm:block"><p className="text-xs text-slate-400">Fall</p><p className="text-sm font-semibold text-slate-600">{student.fall || '-'}</p></div>
               <div className="text-center hidden sm:block"><p className="text-xs text-slate-400">P1</p><p className="text-sm font-semibold text-slate-600">{student.p1 || '-'}</p></div>
-              <div className="text-center hidden sm:block"><p className="text-xs text-slate-400">P2</p><p className="text-sm font-semibold text-slate-600">{student.p2 || '-'}</p></div>
               <div className="text-center sm:border-l sm:pl-3 border-slate-200"><p className="text-xs text-slate-400">Total</p><p className="text-lg font-black text-emerald-600">{student.total}</p></div>
             </div>
           ) : (
@@ -192,9 +190,12 @@
       </div>
     );
 
-    // Challenge Tab Component for sub-challenges
+    // Challenge Tab Component
     const ChallengeTab = ({ iconName, title, subtitle, color, data, pointsKey = 'points' }) => {
-      const maxPoints = data?.[0]?.[pointsKey] || data?.[0]?.points || data?.[0]?.totalPoints || 1;
+      const [showAll, setShowAll] = useState(false);
+      const maxPoints = data?.[0]?.[pointsKey] || data?.[0]?.points || data?.[0]?.totalPoints || data?.[0]?.total || 1;
+      const displayData = showAll ? data : data?.slice(0, 20);
+      
       return (
         <div className="space-y-6">
           <div className={`bg-gradient-to-r ${color} rounded-2xl p-5 text-white`}>
@@ -203,8 +204,16 @@
           <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><Podium data={data} /></div>
           <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
             <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>All Participants</span></h3>
-            <div className="space-y-2">{data?.map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={maxPoints} pointsKey={pointsKey} />)}</div>
+            <div className="space-y-2">{displayData?.map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={maxPoints} pointsKey={pointsKey} />)}</div>
             {(!data || data.length === 0) && <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>}
+            {data && data.length > 20 && (
+              <button 
+                onClick={() => setShowAll(!showAll)}
+                className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition"
+              >
+                {showAll ? 'Show Less' : `Show All ${data.length} Students`}
+              </button>
+            )}
           </div>
         </div>
       );
@@ -226,7 +235,8 @@
       const fetchData = async () => {
         try {
           setLoading(true);
-          const response = await fetch(CONFIG.SMART_DEFAULTS_API);
+          setError(null);
+          const response = await fetch(CONFIG.API_URL);
           if (!response.ok) throw new Error('Failed to fetch data');
           const json = await response.json();
           if (json.error) throw new Error(json.error);
@@ -243,9 +253,8 @@
       }, []);
 
       if (loading) return <LoadingScreen />;
-      if (error) return <ErrorScreen error={error} onRetry={() => { setError(null); fetchData(); }} />;
+      if (error) return <ErrorScreen error={error} onRetry={fetchData} />;
 
-      // Navigation tabs - now includes AC & Lights and Screen Time
       const tabs = [
         { id: 'current', label: 'Current Phase', icon: 'Trophy', badge: 'LIVE' },
         { id: 'alltime', label: 'All-Time', icon: 'Star' },
@@ -253,8 +262,8 @@
         { id: 'steps', label: 'Green Steps', icon: 'Footprints' },
         { id: 'bottles', label: 'Bottle & Can', icon: 'Recycle' },
         { id: 'cutlery', label: 'No Cutlery', icon: 'UtensilsCrossed' },
-        { id: 'ac', label: 'AC & Lights', icon: 'Lightbulb' },
-        { id: 'screen', label: 'Screen Time', icon: 'Smartphone' },
+        { id: 'aclights', label: 'AC & Lights', icon: 'Lightbulb' },
+        { id: 'screentime', label: 'Screen Time', icon: 'Smartphone' },
       ];
 
       const currentPhaseRankings = data?.currentPhaseData?.students || [];
@@ -263,7 +272,6 @@
       const hallsCurrentPhase = data?.currentPhaseData?.halls || [];
       const allHallNames = hallsAllTime.map(h => h.name);
       
-      // Updated phase labels - starting on 16th
       const phaseLabels = { p1: 'Phase 1', p2: 'Phase 2', p3: 'Phase 3', p4: 'Phase 4' };
       const phaseDateLabels = { p1: 'Jan 16 – Feb 15', p2: 'Feb 16 – Mar 15', p3: 'Mar 16 – Apr 15', p4: 'Apr 16 – May 15' };
       const currentPhaseName = phaseLabels[data?.currentPhase] || 'Phase 2';
@@ -280,19 +288,21 @@
       const hallDataCurrent = hallsCurrentPhase.find(h => h.name === selectedHall);
       const hallDataAllTime = hallsAllTime.find(h => h.name === selectedHall);
 
+      const lastUpdated = data?.lastUpdated || new Date().toISOString();
+
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/50 to-teal-50/50 font-sans pb-24">
           {/* Header */}
           <div className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white">
             <div className="absolute inset-0 opacity-20"><div className="absolute top-5 left-5 w-32 h-32 bg-white rounded-full blur-3xl" /><div className="absolute bottom-5 right-10 w-48 h-48 bg-yellow-300 rounded-full blur-3xl" /></div>
-            <div className="relative max-w-4xl mx-auto px-4 py-6">
+            <div className="relative max-w-4xl mx-auto px-4 py-5">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
                   <Icon name="Leaf" className="w-8 h-8" />
                 </div>
                 <div>
                   <p className="text-xs text-white/70 uppercase tracking-wider">AUS Sustainability × SRL</p>
-                  <h1 className="text-2xl font-black tracking-tight">Smart Defaults Challenge</h1>
+                  <h1 className="text-xl font-black tracking-tight">Smart Defaults Challenge</h1>
                 </div>
               </div>
             </div>
@@ -329,26 +339,12 @@
                     <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{data?.currentPhaseData?.stats?.submissions || 0}</p><p className="text-xs text-white/70">Submissions</p></div>
                   </div>
                 </div>
-                
-                {/* Available Challenges Info */}
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Zap" className="w-5 h-5 text-amber-500" /><span>Available Challenges</span></h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                    <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg"><Icon name="Footprints" className="w-4 h-4 text-green-600" /><span className="text-green-700">Green Steps</span></div>
-                    <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg"><Icon name="Recycle" className="w-4 h-4 text-blue-600" /><span className="text-blue-700">Bottle & Can</span></div>
-                    <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg"><Icon name="UtensilsCrossed" className="w-4 h-4 text-purple-600" /><span className="text-purple-700">No Cutlery</span></div>
-                    <div className="flex items-center gap-2 p-2 bg-amber-50 rounded-lg"><Icon name="Lightbulb" className="w-4 h-4 text-amber-600" /><span className="text-amber-700">AC & Lights</span></div>
-                    <div className="flex items-center gap-2 p-2 bg-violet-50 rounded-lg"><Icon name="Smartphone" className="w-4 h-4 text-violet-600" /><span className="text-violet-700">Screen Time</span></div>
-                  </div>
-                </div>
-                
                 <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /><span>Top Performers</span></h3><Podium data={currentPhaseRankings} /></div>
                 <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
                   <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>Full Rankings</span></h3>
                   <div className="space-y-2">
                     {(showAllCurrent ? currentPhaseRankings : currentPhaseRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={maxCurrentPoints} />)}
                   </div>
-                  {currentPhaseRankings.length === 0 && <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>}
                   {currentPhaseRankings.length > 20 && (
                     <button 
                       onClick={() => setShowAllCurrent(!showAllCurrent)}
@@ -409,11 +405,11 @@
               </div>
             )}
 
-            {activeTab === 'steps' && <ChallengeTab iconName="Footprints" title="Green Steps Challenge" subtitle="Points earned by walking • Up to 10 pts/day" color="from-green-500 via-emerald-500 to-teal-500" data={data?.challenges?.steps} />}
-            {activeTab === 'bottles' && <ChallengeTab iconName="Recycle" title="Bottle & Can Disposal" subtitle="Points for recycling • 5 pts/submission" color="from-blue-500 via-cyan-500 to-teal-500" data={data?.challenges?.bottles} />}
-            {activeTab === 'cutlery' && <ChallengeTab iconName="UtensilsCrossed" title="Opt-Out of Plastic Cutlery" subtitle="Decline plastic cutlery • 2 pts/submission" color="from-purple-500 via-violet-500 to-indigo-500" data={data?.challenges?.cutlery} />}
-            {activeTab === 'ac' && <ChallengeTab iconName="Lightbulb" title="AC & Lights Off Challenge" subtitle="Turn off AC and lights when leaving • 10 pts/day" color="from-yellow-500 via-amber-500 to-orange-500" data={data?.challenges?.ac} />}
-            {activeTab === 'screen' && <ChallengeTab iconName="Smartphone" title="Screen Time Challenge" subtitle="Reduce daily screen time • 3-10 pts/day" color="from-violet-500 via-purple-500 to-fuchsia-500" data={data?.challenges?.screen} />}
+            {activeTab === 'steps' && <ChallengeTab iconName="Footprints" title="Green Steps Challenge" subtitle="Points earned by walking • Up to 10 pts/day" color="from-green-500 via-emerald-500 to-teal-500" data={data?.challenges?.steps} pointsKey="total" />}
+            {activeTab === 'bottles' && <ChallengeTab iconName="Recycle" title="Bottle & Can Disposal" subtitle="Points for recycling • 5 pts/submission" color="from-blue-500 via-cyan-500 to-teal-500" data={data?.challenges?.bottles} pointsKey="total" />}
+            {activeTab === 'cutlery' && <ChallengeTab iconName="UtensilsCrossed" title="Opt-Out of Plastic Cutlery" subtitle="Decline plastic cutlery • 2 pts/submission" color="from-purple-500 via-violet-500 to-indigo-500" data={data?.challenges?.cutlery} pointsKey="total" />}
+            {activeTab === 'aclights' && <ChallengeTab iconName="Lightbulb" title="AC & Lights Off Challenge" subtitle="Turn off AC and lights before class • 10 pts/day" color="from-yellow-500 via-amber-500 to-orange-500" data={data?.challenges?.acLights} pointsKey="total" />}
+            {activeTab === 'screentime' && <ChallengeTab iconName="Smartphone" title="Screen Time Challenge" subtitle="Reduce screen time • 3-10 pts/day" color="from-violet-500 via-purple-500 to-fuchsia-500" data={data?.challenges?.screenTime} pointsKey="total" />}
           </div>
 
           {/* Footer */}
@@ -424,12 +420,12 @@
                 <span className="font-semibold text-white">Smart Defaults Challenge</span>
               </div>
               <p className="text-xs">AUS Sustainability Office × Student Residential Life</p>
-              <p className="text-xs text-slate-500 mt-1">Last updated: {new Date(data?.lastUpdated || Date.now()).toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mt-1">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
             </div>
           </div>
 
-          {/* Submit Button (Bottom Right) */}
-          <a href={CONFIG.SMART_DEFAULTS_FORM} target="_blank" rel="noopener noreferrer"
+          {/* Submit Button */}
+          <a href={CONFIG.FORM_URL} target="_blank" rel="noopener noreferrer"
             className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/40 hover:shadow-emerald-500/50 text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
             <Icon name="Leaf" className="w-5 h-5" />
             <span>Log Your Actions</span>
