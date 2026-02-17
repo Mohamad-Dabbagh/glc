@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AUS Smart Defaults Challenge</title>
+  <title>AUS Green Living Challenge</title>
   <meta name="description" content="Residential Halls Sustainability Competition 2025-26">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -27,11 +27,57 @@
     const { useState, useEffect } = React;
     
     // =====================================================
-    // 🔴 CONFIGURATION
+    // CONFIGURATION
     // =====================================================
     const CONFIG = {
       API_URL: "https://script.google.com/macros/s/AKfycbzXKyI0jyDvlzXGce522pBybzn33mmOYWiXi8ZrmgwuKdumjZI1hX1FSz5eZsM8VoDvgg/exec",
       FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSf5QGBOligt_emBLdADbw8l7OJgBLRWJdiOtL5EbDIPbthPqw/viewform",
+      GREEN_LIVING_GUIDE_URL: "https://drive.google.com/file/d/1Yr5pnEfle_s1_xOEvGQua37iEYX7IF2v/view?usp=sharing",
+    };
+    
+    // PowerDown Olympics Phase 1 Results (Fair Scoring - All 27 participants)
+    const POWERDOWN_DATA = [
+      { name: "Mohammad Ayman Suhail", email: "b00112329@aus.edu", hall: "KLm", acPoints: 270, screenPoints: 263, total: 533 },
+      { name: "Yara El Hajj", email: "g00105170@aus.edu", hall: "EFw", acPoints: 250, screenPoints: 243, total: 493 },
+      { name: "Lina Alfaridi", email: "g00112368@aus.edu", hall: "ABw", acPoints: 210, screenPoints: 210, total: 420 },
+      { name: "Sara Elnahel", email: "g00103445@aus.edu", hall: "ABw", acPoints: 200, screenPoints: 193, total: 393 },
+      { name: "Momina Ahmed", email: "g00105612@aus.edu", hall: "GHw", acPoints: 150, screenPoints: 150, total: 300 },
+      { name: "Huda Moossa", email: "g00111452@aus.edu", hall: "ABw", acPoints: 110, screenPoints: 110, total: 220 },
+      { name: "Janya Narwani", email: "g00101446@aus.edu", hall: "Iw", acPoints: 90, screenPoints: 90, total: 180 },
+      { name: "Shaylee Rex Pancras Prabu", email: "g00108426@aus.edu", hall: "GHw", acPoints: 110, screenPoints: 37, total: 147 },
+      { name: "Nuha Ansari", email: "g00101583@aus.edu", hall: "GHw", acPoints: 70, screenPoints: 70, total: 140 },
+      { name: "Vanshika Tulsiyani", email: "g00101504@aus.edu", hall: "GHw", acPoints: 70, screenPoints: 52, total: 122 },
+      { name: "Nuha Manal Pattani", email: "g00101208@aus.edu", hall: "GHw", acPoints: 50, screenPoints: 36, total: 86 },
+      { name: "Abdullah Azhari", email: "b00108677@aus.edu", hall: "KLm", acPoints: 50, screenPoints: 33, total: 83 },
+      { name: "Ariana Karzai", email: "g00095840@aus.edu", hall: "GHw", acPoints: 50, screenPoints: 29, total: 79 },
+      { name: "Hana Ansari", email: "g00105677@aus.edu", hall: "GHw", acPoints: 30, screenPoints: 30, total: 60 },
+      { name: "Sarah Tawfik", email: "g00094879@aus.edu", hall: "EFw", acPoints: 40, screenPoints: 12, total: 52 },
+      { name: "Kholoud Elkholy", email: "g00099492@aus.edu", hall: "GHw", acPoints: 30, screenPoints: 16, total: 46 },
+      { name: "Jayna Narwani", email: "g00101470@aus.edu", hall: "Iw", acPoints: 30, screenPoints: 13, total: 43 },
+      { name: "Noor Al Siksek", email: "g00100188@aus.edu", hall: "GHw", acPoints: 20, screenPoints: 23, total: 43 },
+      { name: "Saif Mohamed Ibrahim", email: "b00104895@aus.edu", hall: "KLm", acPoints: 20, screenPoints: 20, total: 40 },
+      { name: "Razan Elgendy", email: "g00099305@aus.edu", hall: "GHw", acPoints: 30, screenPoints: 3, total: 33 },
+      { name: "Mohamad Dabbagh", email: "b00101218@aus.edu", hall: "KLm", acPoints: 10, screenPoints: 10, total: 20 },
+      { name: "Siham Kampala Thekkummuri", email: "g00101396@aus.edu", hall: "EFw", acPoints: 20, screenPoints: 0, total: 20 },
+      { name: "George Palayoor", email: "b00108209@aus.edu", hall: "KLm", acPoints: 10, screenPoints: 10, total: 20 },
+      { name: "Alina Ameer Palliparambil", email: "g00096853@aus.edu", hall: "GHw", acPoints: 10, screenPoints: 0, total: 10 },
+      { name: "Karissa Jain", email: "g00111843@aus.edu", hall: "ABw", acPoints: 10, screenPoints: 0, total: 10 },
+      { name: "Merry Gurji", email: "g00107439@aus.edu", hall: "GHw", acPoints: 10, screenPoints: 0, total: 10 },
+      { name: "Laiba Ali", email: "g00105074@aus.edu", hall: "ABw", acPoints: 0, screenPoints: 3, total: 3 },
+    ];
+    
+    const POWERDOWN_STATS = { points: 3606, participants: 27, submissions: 551 };
+    const POWERDOWN_PRIZES = "🥇 AED 300 • 🥈 AED 200 • 🥉 AED 100";
+    
+    // Helper to get PowerDown halls data
+    const getPowerDownHalls = () => {
+      const hallMap = {};
+      POWERDOWN_DATA.forEach(s => {
+        if (!hallMap[s.hall]) hallMap[s.hall] = { name: s.hall, points: 0, participants: 0 };
+        hallMap[s.hall].points += s.total;
+        hallMap[s.hall].participants += 1;
+      });
+      return Object.values(hallMap).sort((a, b) => b.points - a.points);
     };
     // =====================================================
 
@@ -52,6 +98,7 @@
     // Hall colors
     const hallColors = {
       'IJw': { bg: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', medium: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300' },
+      'Iw': { bg: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', medium: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300' },
       'EFw': { bg: 'from-blue-500 to-indigo-600', light: 'bg-blue-50', medium: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
       'ABw': { bg: 'from-violet-500 to-purple-600', light: 'bg-violet-50', medium: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300' },
       'GHw': { bg: 'from-pink-500 to-rose-600', light: 'bg-pink-50', medium: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-300' },
@@ -91,15 +138,15 @@
 
     // Shared Components
     const RankBadge = ({ rank, size = 'md' }) => {
-      const sizes = { sm: { wrapper: 'w-7 h-7', text: 'text-xs', badge: 'w-4 h-4 text-[10px] -top-0.5 -right-0.5' }, md: { wrapper: 'w-10 h-10', text: 'text-sm', badge: 'w-5 h-5 text-xs -top-1 -right-1' } };
+      const sizes = { sm: { wrapper: 'w-7 h-7', text: 'text-xs' }, md: { wrapper: 'w-10 h-10', text: 'text-sm' } };
       const s = sizes[size];
-      if (rank === 1) return (<div className="relative"><div className={`${s.wrapper} rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-400/40`}><Icon name="Crown" className="w-4 h-4 text-yellow-900" /></div><div className={`absolute ${s.badge} bg-yellow-400 rounded-full flex items-center justify-center font-black text-yellow-900 border-2 border-white`}>1</div></div>);
-      if (rank === 2) return (<div className="relative"><div className={`${s.wrapper} rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 flex items-center justify-center shadow-md`}><Icon name="Medal" className="w-4 h-4 text-slate-600" /></div><div className={`absolute ${s.badge} bg-slate-300 rounded-full flex items-center justify-center font-black text-slate-700 border-2 border-white`}>2</div></div>);
-      if (rank === 3) return (<div className="relative"><div className={`${s.wrapper} rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 flex items-center justify-center shadow-md`}><Icon name="Award" className="w-4 h-4 text-amber-200" /></div><div className={`absolute ${s.badge} bg-amber-700 rounded-full flex items-center justify-center font-black text-amber-100 border-2 border-white`}>3</div></div>);
+      if (rank === 1) return (<div className={`${s.wrapper} rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-400/40`}><Icon name="Crown" className="w-4 h-4 text-yellow-900" /></div>);
+      if (rank === 2) return (<div className={`${s.wrapper} rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 flex items-center justify-center shadow-md`}><Icon name="Medal" className="w-4 h-4 text-slate-600" /></div>);
+      if (rank === 3) return (<div className={`${s.wrapper} rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 flex items-center justify-center shadow-md`}><Icon name="Award" className="w-4 h-4 text-amber-200" /></div>);
       return (<div className={`${s.wrapper} rounded-full bg-slate-700 flex items-center justify-center`}><span className={`${s.text} font-bold text-slate-200`}>{rank}</span></div>);
     };
 
-    const HallBadge = ({ hall, size = 'md' }) => {
+    const HallBadge = ({ hall }) => {
       const colors = getHallColor(hall);
       return <span className={`px-2 py-0.5 text-xs rounded-full font-semibold ${colors.medium} ${colors.text}`}>{hall}</span>;
     };
@@ -110,14 +157,14 @@
       const pts = (s) => s?.points ?? s?.totalPoints ?? s?.total ?? 0;
       return (
         <div className="relative h-52 flex items-end justify-center gap-2 mb-4">
-          {second && (<div className="flex flex-col items-center"><div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 flex items-center justify-center mb-1.5 shadow-xl border-4 border-white"><span className="text-lg font-black text-slate-700">2</span></div><p className="text-xs font-semibold text-slate-800 text-center max-w-16 truncate">{second.name?.split(' ')[0]}</p><HallBadge hall={second.hall} size="sm" /><div className="mt-2 w-20 bg-gradient-to-t from-slate-300 to-slate-200 rounded-t-lg flex flex-col items-center justify-end pb-2" style={{height:'75px'}}><span className="text-lg font-black text-slate-700">{pts(second)}</span><span className="text-xs text-slate-500">pts</span></div></div>)}
-          <div className="flex flex-col items-center"><div className="relative"><div className="absolute -top-4 left-1/2 -translate-x-1/2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /></div><div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 flex items-center justify-center mb-1.5 shadow-2xl border-4 border-white ring-4 ring-yellow-300/50"><span className="text-xl font-black text-yellow-900">1</span></div></div><p className="text-sm font-bold text-slate-800 text-center max-w-20 truncate">{first.name?.split(' ')[0]}</p><HallBadge hall={first.hall} size="sm" /><div className="mt-2 w-24 bg-gradient-to-t from-yellow-400 to-yellow-300 rounded-t-lg flex flex-col items-center justify-end pb-2 shadow-lg" style={{height:'95px'}}><Icon name="Zap" className="w-4 h-4 text-yellow-700 mb-0.5" /><span className="text-xl font-black text-yellow-800">{pts(first)}</span><span className="text-xs text-yellow-700">pts</span></div></div>
-          {third && (<div className="flex flex-col items-center"><div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 flex items-center justify-center mb-1.5 shadow-xl border-4 border-white"><span className="text-base font-black text-amber-200">3</span></div><p className="text-xs font-semibold text-slate-800 text-center max-w-16 truncate">{third.name?.split(' ')[0]}</p><HallBadge hall={third.hall} size="sm" /><div className="mt-2 w-16 bg-gradient-to-t from-amber-600 to-amber-500 rounded-t-lg flex flex-col items-center justify-end pb-2" style={{height:'55px'}}><span className="text-base font-black text-amber-100">{pts(third)}</span><span className="text-xs text-amber-200">pts</span></div></div>)}
+          {second && (<div className="flex flex-col items-center"><div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 flex items-center justify-center mb-1.5 shadow-xl border-4 border-white"><span className="text-lg font-black text-slate-700">2</span></div><p className="text-xs font-semibold text-slate-800 text-center max-w-16 truncate">{second.name?.split(' ')[0]}</p><HallBadge hall={second.hall} /><div className="mt-2 w-20 bg-gradient-to-t from-slate-300 to-slate-200 rounded-t-lg flex flex-col items-center justify-end pb-2" style={{height:'75px'}}><span className="text-lg font-black text-slate-700">{pts(second)}</span><span className="text-xs text-slate-500">pts</span></div></div>)}
+          <div className="flex flex-col items-center"><div className="relative"><div className="absolute -top-4 left-1/2 -translate-x-1/2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /></div><div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 flex items-center justify-center mb-1.5 shadow-2xl border-4 border-white ring-4 ring-yellow-300/50"><span className="text-xl font-black text-yellow-900">1</span></div></div><p className="text-sm font-bold text-slate-800 text-center max-w-20 truncate">{first.name?.split(' ')[0]}</p><HallBadge hall={first.hall} /><div className="mt-2 w-24 bg-gradient-to-t from-yellow-400 to-yellow-300 rounded-t-lg flex flex-col items-center justify-end pb-2 shadow-lg" style={{height:'95px'}}><Icon name="Zap" className="w-4 h-4 text-yellow-700 mb-0.5" /><span className="text-xl font-black text-yellow-800">{pts(first)}</span><span className="text-xs text-yellow-700">pts</span></div></div>
+          {third && (<div className="flex flex-col items-center"><div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 flex items-center justify-center mb-1.5 shadow-xl border-4 border-white"><span className="text-base font-black text-amber-200">3</span></div><p className="text-xs font-semibold text-slate-800 text-center max-w-16 truncate">{third.name?.split(' ')[0]}</p><HallBadge hall={third.hall} /><div className="mt-2 w-16 bg-gradient-to-t from-amber-600 to-amber-500 rounded-t-lg flex flex-col items-center justify-end pb-2" style={{height:'55px'}}><span className="text-base font-black text-amber-100">{pts(third)}</span><span className="text-xs text-amber-200">pts</span></div></div>)}
         </div>
       );
     };
 
-    const StudentRow = ({ student, maxPoints, showPhases = false, pointsKey = 'points' }) => {
+    const StudentRow = ({ student, maxPoints, showBreakdown = false, pointsKey = 'points' }) => {
       const colors = getHallColor(student.hall);
       const points = student[pointsKey] ?? student.points ?? student.totalPoints ?? student.total ?? 0;
       const barWidth = maxPoints > 0 ? (points / maxPoints) * 100 : 0;
@@ -128,11 +175,13 @@
             <div className="flex items-center gap-2 mb-1"><h3 className="font-semibold text-slate-800 truncate text-sm">{student.name}</h3><HallBadge hall={student.hall} /></div>
             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full bg-gradient-to-r ${colors.bg} rounded-full transition-all duration-500`} style={{width:`${barWidth}%`}} /></div>
           </div>
-          {showPhases ? (
-            <div className="flex items-center gap-3 text-right">
-              <div className="text-center hidden sm:block"><p className="text-xs text-slate-400">Fall</p><p className="text-sm font-semibold text-slate-600">{student.fall || '-'}</p></div>
-              <div className="text-center hidden sm:block"><p className="text-xs text-slate-400">P1</p><p className="text-sm font-semibold text-slate-600">{student.p1 || '-'}</p></div>
-              <div className="text-center sm:border-l sm:pl-3 border-slate-200"><p className="text-xs text-slate-400">Total</p><p className="text-lg font-black text-emerald-600">{student.total}</p></div>
+          {showBreakdown ? (
+            <div className="flex items-center gap-2 text-right">
+              <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">Fall</p><p className="text-sm font-semibold text-slate-600">{student.fall || 0}</p></div>
+              <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">SD P1</p><p className="text-sm font-semibold text-slate-600">{student.sdP1 || 0}</p></div>
+              <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">PwrDn</p><p className="text-sm font-semibold text-cyan-600">{student.powerdown || 0}</p></div>
+              <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">P2+</p><p className="text-sm font-semibold text-slate-600">{student.p2plus || 0}</p></div>
+              <div className="text-center border-l pl-3 border-slate-200"><p className="text-xs text-slate-400">Total</p><p className="text-lg font-black text-emerald-600">{points}</p></div>
             </div>
           ) : (
             <div className="text-right"><p className="text-lg font-black text-slate-800">{points}</p><p className="text-xs text-slate-400">pts</p></div>
@@ -178,46 +227,154 @@
       );
     };
 
-    const PrizesBanner = ({ prizes }) => (
-      <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-4 mb-6">
+    const PrizesBanner = ({ prizes, color = "yellow" }) => (
+      <div className={`bg-gradient-to-r ${color === 'yellow' ? 'from-yellow-50 to-amber-50 border-yellow-200' : 'from-cyan-50 to-teal-50 border-cyan-200'} border rounded-xl p-4 mb-6`}>
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-yellow-100 rounded-lg"><Icon name="Gift" className="w-5 h-5 text-yellow-600" /></div>
+          <div className={`p-2 ${color === 'yellow' ? 'bg-yellow-100' : 'bg-cyan-100'} rounded-lg`}><Icon name="Gift" className={`w-5 h-5 ${color === 'yellow' ? 'text-yellow-600' : 'text-cyan-600'}`} /></div>
           <div>
-            <h3 className="font-bold text-yellow-800">Prizes!</h3>
-            <p className="text-sm text-yellow-700">{prizes}</p>
+            <h3 className={`font-bold ${color === 'yellow' ? 'text-yellow-800' : 'text-cyan-800'}`}>Prizes!</h3>
+            <p className={`text-sm ${color === 'yellow' ? 'text-yellow-700' : 'text-cyan-700'}`}>{prizes}</p>
           </div>
         </div>
       </div>
     );
 
-    // Challenge Tab Component
-    const ChallengeTab = ({ iconName, title, subtitle, color, data, pointsKey = 'points' }) => {
-      const [showAll, setShowAll] = useState(false);
-      const maxPoints = data?.[0]?.[pointsKey] || data?.[0]?.points || data?.[0]?.totalPoints || data?.[0]?.total || 1;
-      const displayData = showAll ? data : data?.slice(0, 20);
+    // Collapsible Challenge Section
+    const ChallengeAccordion = ({ challenges }) => {
+      const [openChallenge, setOpenChallenge] = useState(null);
+      
+      const challengeConfig = [
+        { id: 'steps', label: 'Green Steps', icon: 'Footprints', color: 'from-green-500 to-emerald-500', subtitle: 'Up to 10 pts/day', data: challenges?.steps },
+        { id: 'bottles', label: 'Bottle & Can Disposal', icon: 'Recycle', color: 'from-blue-500 to-cyan-500', subtitle: '5 pts/submission', data: challenges?.bottles },
+        { id: 'cutlery', label: 'Opt-Out of Plastic Cutlery', icon: 'UtensilsCrossed', color: 'from-purple-500 to-violet-500', subtitle: '2 pts/submission', data: challenges?.cutlery },
+        { id: 'aclights', label: 'AC & Lights Off', icon: 'Lightbulb', color: 'from-yellow-500 to-amber-500', subtitle: '10 pts/day', data: challenges?.acLights },
+        { id: 'screentime', label: 'Screen Time', icon: 'Smartphone', color: 'from-violet-500 to-purple-500', subtitle: '3-10 pts/day', data: challenges?.screenTime },
+      ];
       
       return (
-        <div className="space-y-6">
-          <div className={`bg-gradient-to-r ${color} rounded-2xl p-5 text-white`}>
-            <div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-xl"><Icon name={iconName} className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">{title}</h2><p className="text-white/80 text-sm">{subtitle}</p></div></div>
-          </div>
-          <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><Podium data={data} /></div>
-          <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-            <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>All Participants</span></h3>
-            <div className="space-y-2">{displayData?.map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={maxPoints} pointsKey={pointsKey} />)}</div>
-            {(!data || data.length === 0) && <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>}
-            {data && data.length > 20 && (
+        <div className="space-y-3">
+          {challengeConfig.map(ch => (
+            <div key={ch.id} className="bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden">
               <button 
-                onClick={() => setShowAll(!showAll)}
-                className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition"
+                onClick={() => setOpenChallenge(openChallenge === ch.id ? null : ch.id)}
+                className={`w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-all`}
               >
-                {showAll ? 'Show Less' : `Show All ${data.length} Students`}
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg bg-gradient-to-r ${ch.color}`}>
+                    <Icon name={ch.icon} className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-slate-800">{ch.label}</h3>
+                    <p className="text-xs text-slate-500">{ch.subtitle}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-slate-600">{ch.data?.length || 0} participants</span>
+                  <Icon name={openChallenge === ch.id ? "ChevronUp" : "ChevronDown"} className="w-5 h-5 text-slate-400" />
+                </div>
               </button>
-            )}
-          </div>
+              
+              {openChallenge === ch.id && (
+                <div className="border-t border-slate-100 p-4 bg-slate-50">
+                  {ch.data && ch.data.length > 0 ? (
+                    <>
+                      <Podium data={ch.data} />
+                      <div className="space-y-2 mt-4">
+                        {ch.data.slice(0, 10).map((s, i) => (
+                          <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={ch.data[0]?.total || 1} pointsKey="total" />
+                        ))}
+                      </div>
+                      {ch.data.length > 10 && (
+                        <p className="text-center text-slate-500 text-sm mt-3">+ {ch.data.length - 10} more participants</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       );
     };
+
+    // =====================================================
+    // MERGE FUNCTION: Combine API data with PowerDown
+    // =====================================================
+    function mergeAllTimeData(apiStudents) {
+      // Create a map of all students by email (lowercase)
+      const studentMap = {};
+      
+      // Add API students first
+      apiStudents.forEach(s => {
+        const email = (s.email || '').toLowerCase();
+        const key = email || s.name.toLowerCase();
+        studentMap[key] = {
+          name: s.name,
+          email: email,
+          hall: s.hall,
+          fall: s.fall || 0,
+          sdP1: s.p1 || 0,
+          powerdown: 0,
+          p2plus: (s.p2 || 0) + (s.p3 || 0) + (s.p4 || 0),
+          total: s.total || 0
+        };
+      });
+      
+      // Add PowerDown data - merge by email
+      POWERDOWN_DATA.forEach(pd => {
+        const email = pd.email.toLowerCase();
+        if (studentMap[email]) {
+          // Existing student - add PowerDown points
+          studentMap[email].powerdown = pd.total;
+          studentMap[email].total += pd.total;
+          // Use PowerDown hall if not set
+          if (!studentMap[email].hall) studentMap[email].hall = pd.hall;
+        } else {
+          // New student from PowerDown only
+          studentMap[email] = {
+            name: pd.name,
+            email: email,
+            hall: pd.hall,
+            fall: 0,
+            sdP1: 0,
+            powerdown: pd.total,
+            p2plus: 0,
+            total: pd.total
+          };
+        }
+      });
+      
+      // Convert to array and sort by total
+      const merged = Object.values(studentMap)
+        .sort((a, b) => b.total - a.total)
+        .map((s, i) => ({ ...s, rank: i + 1 }));
+      
+      return merged;
+    }
+    
+    // Merge hall data
+    function mergeHallData(apiHalls) {
+      const hallMap = {};
+      
+      // Start with API halls
+      apiHalls.forEach(h => {
+        hallMap[h.name] = { name: h.name, points: h.points || 0, students: h.students || 0 };
+      });
+      
+      // Add PowerDown hall points
+      POWERDOWN_DATA.forEach(pd => {
+        const hall = pd.hall;
+        if (hallMap[hall]) {
+          hallMap[hall].points += pd.total;
+        } else {
+          hallMap[hall] = { name: hall, points: pd.total, students: 1 };
+        }
+      });
+      
+      return Object.values(hallMap).sort((a, b) => b.points - a.points);
+    }
 
     // =====================================================
     // MAIN APP COMPONENT
@@ -256,22 +413,34 @@
       if (error) return <ErrorScreen error={error} onRetry={fetchData} />;
 
       const tabs = [
-        { id: 'current', label: 'Current Phase', icon: 'Trophy', badge: 'LIVE' },
+        { id: 'current', label: 'Phase 2', icon: 'Trophy', badge: 'LIVE' },
+        { id: 'phase1', label: 'Phase 1 Recap', icon: 'History' },
         { id: 'alltime', label: 'All-Time', icon: 'Star' },
-        { id: 'halls', label: 'Hall Battle', icon: 'Users' },
-        { id: 'steps', label: 'Green Steps', icon: 'Footprints' },
-        { id: 'bottles', label: 'Bottle & Can', icon: 'Recycle' },
-        { id: 'cutlery', label: 'No Cutlery', icon: 'UtensilsCrossed' },
-        { id: 'aclights', label: 'AC & Lights', icon: 'Lightbulb' },
-        { id: 'screentime', label: 'Screen Time', icon: 'Smartphone' },
+        { id: 'halls', label: 'Halls', icon: 'Users' },
+        { id: 'challenges', label: 'Challenges', icon: 'Target' },
       ];
 
       const currentPhaseRankings = data?.currentPhaseData?.students || [];
-      const allTimeRankings = data?.allTime?.students || [];
-      const hallsAllTime = data?.allTime?.halls || [];
+      const apiAllTimeRankings = data?.allTime?.students || [];
+      const apiHallsAllTime = data?.allTime?.halls || [];
       const hallsCurrentPhase = data?.currentPhaseData?.halls || [];
+      
+      // Merge PowerDown into All-Time
+      const allTimeRankings = mergeAllTimeData(apiAllTimeRankings);
+      const hallsAllTime = mergeHallData(apiHallsAllTime);
+      
       const allHallNames = hallsAllTime.map(h => h.name);
       
+      // Phase 1 Smart Defaults data (from API)
+      const phase1SmartDefaults = apiAllTimeRankings
+        .filter(st => st.p1 > 0)
+        .map((st, i) => ({ ...st, rank: i + 1, points: st.p1 }))
+        .sort((a, b) => b.points - a.points)
+        .map((st, i) => ({ ...st, rank: i + 1 }));
+      
+      // PowerDown leaderboard with ranks
+      const powerdownRanked = POWERDOWN_DATA.map((s, i) => ({ ...s, rank: i + 1 }));
+
       const phaseLabels = { p1: 'Phase 1', p2: 'Phase 2', p3: 'Phase 3', p4: 'Phase 4' };
       const phaseDateLabels = { p1: 'Jan 16 – Feb 15', p2: 'Feb 16 – Mar 15', p3: 'Mar 16 – Apr 15', p4: 'Apr 16 – May 15' };
       const currentPhaseName = phaseLabels[data?.currentPhase] || 'Phase 2';
@@ -289,6 +458,12 @@
       const hallDataAllTime = hallsAllTime.find(h => h.name === selectedHall);
 
       const lastUpdated = data?.lastUpdated || new Date().toISOString();
+      
+      // Calculate merged stats
+      const allTimeStats = {
+        points: allTimeRankings.reduce((sum, s) => sum + s.total, 0),
+        participants: allTimeRankings.length,
+      };
 
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/50 to-teal-50/50 font-sans pb-24">
@@ -302,7 +477,7 @@
                 </div>
                 <div>
                   <p className="text-xs text-white/70 uppercase tracking-wider">AUS Sustainability × SRL</p>
-                  <h1 className="text-xl font-black tracking-tight">Smart Defaults Challenge</h1>
+                  <h1 className="text-xl font-black tracking-tight">Green Living Challenge</h1>
                 </div>
               </div>
             </div>
@@ -325,6 +500,8 @@
 
           {/* Content */}
           <div className="max-w-4xl mx-auto px-4 py-6">
+            
+            {/* PHASE 2 (Current) */}
             {activeTab === 'current' && (
               <div className="space-y-6">
                 <PrizesBanner prizes="🥇 AED 200 • 🥈 AED 150 • 🥉 AED 100" />
@@ -345,40 +522,109 @@
                   <div className="space-y-2">
                     {(showAllCurrent ? currentPhaseRankings : currentPhaseRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={maxCurrentPoints} />)}
                   </div>
+                  {currentPhaseRankings.length === 0 && <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>}
                   {currentPhaseRankings.length > 20 && (
-                    <button 
-                      onClick={() => setShowAllCurrent(!showAllCurrent)}
-                      className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition"
-                    >
+                    <button onClick={() => setShowAllCurrent(!showAllCurrent)} className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition">
                       {showAllCurrent ? `Show Less` : `Show All ${currentPhaseRankings.length} Students`}
                     </button>
                   )}
                 </div>
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Users" className="w-5 h-5 text-blue-500" /><span>Hall Rankings ({currentPhaseName})</span></h3><div className="grid gap-2">{hallsCurrentPhase.map((h, i) => <HallCard key={i} hall={h} rank={i + 1} maxPoints={maxHallPointsCurrent} />)}</div></div>
               </div>
             )}
 
+            {/* PHASE 1 RECAP */}
+            {activeTab === 'phase1' && (
+              <div className="space-y-6">
+                {/* Smart Defaults Phase 1 */}
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-white/20 rounded-xl"><Icon name="Leaf" className="w-6 h-6" /></div>
+                    <div>
+                      <h2 className="text-xl font-bold">Smart Defaults – Phase 1</h2>
+                      <p className="text-white/80 text-sm">Jan 16 – Feb 15, 2026</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <PrizesBanner prizes="🥇 AED 200 • 🥈 AED 150 • 🥉 AED 100" />
+                
+                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
+                  <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /><span>Top Performers</span></h3>
+                  <Podium data={phase1SmartDefaults} />
+                </div>
+                
+                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
+                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>Full Rankings</span></h3>
+                  <div className="space-y-2">
+                    {phase1SmartDefaults.slice(0, 15).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={phase1SmartDefaults[0]?.points || 1} />)}
+                  </div>
+                  {phase1SmartDefaults.length === 0 && <p className="text-center text-slate-400 py-8">No data available</p>}
+                </div>
+
+                {/* Divider */}
+                <div className="relative py-4">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-slate-200"></div></div>
+                  <div className="relative flex justify-center"><span className="bg-slate-50 px-4 text-slate-500 font-semibold">⚡ PowerDown Olympics</span></div>
+                </div>
+
+                {/* PowerDown Olympics Phase 1 */}
+                <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 rounded-2xl p-5 text-white">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-white/20 rounded-xl"><Icon name="Zap" className="w-6 h-6" /></div>
+                    <div>
+                      <h2 className="text-xl font-bold">PowerDown Olympics</h2>
+                      <p className="text-white/80 text-sm">Jan 20 – Feb 15, 2026 • Energy & Climate Theme</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 mt-4">
+                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{POWERDOWN_STATS.points.toLocaleString()}</p><p className="text-xs text-white/70">Points</p></div>
+                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{POWERDOWN_STATS.participants}</p><p className="text-xs text-white/70">Participants</p></div>
+                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{POWERDOWN_STATS.submissions}</p><p className="text-xs text-white/70">Submissions</p></div>
+                  </div>
+                </div>
+                
+                <PrizesBanner prizes={POWERDOWN_PRIZES} color="cyan" />
+                
+                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
+                  <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /><span>Top Performers</span></h3>
+                  <Podium data={powerdownRanked} />
+                </div>
+                
+                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
+                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-cyan-500" /><span>Full Rankings</span></h3>
+                  <div className="space-y-2">
+                    {powerdownRanked.map((s, i) => <StudentRow key={i} student={s} maxPoints={powerdownRanked[0]?.total || 1} pointsKey="total" />)}
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
+                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Users" className="w-5 h-5 text-blue-500" /><span>Hall Rankings (PowerDown)</span></h3>
+                  <div className="grid gap-2">
+                    {getPowerDownHalls().map((h, i) => <HallCard key={i} hall={h} rank={i + 1} maxPoints={getPowerDownHalls()[0]?.points || 1} />)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ALL-TIME (Merged) */}
             {activeTab === 'alltime' && (
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white">
-                  <div className="flex items-center gap-3 mb-4"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Trophy" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">All-Time Rankings</h2><p className="text-white/80 text-sm">Fall 2025 + Spring 2026 Combined</p></div></div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{data?.allTime?.stats?.points?.toLocaleString() || 0}</p><p className="text-xs text-white/70">Total Points</p></div>
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{data?.allTime?.stats?.participants || 0}</p><p className="text-xs text-white/70">Participants</p></div>
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{data?.allTime?.stats?.submissions || 0}</p><p className="text-xs text-white/70">Submissions</p></div>
+                  <div className="flex items-center gap-3 mb-4"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Trophy" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">All-Time Rankings</h2><p className="text-white/80 text-sm">Fall 2025 + Smart Defaults + PowerDown Olympics</p></div></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{allTimeStats.points.toLocaleString()}</p><p className="text-xs text-white/70">Total Points</p></div>
+                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{allTimeStats.participants}</p><p className="text-xs text-white/70">Participants</p></div>
                   </div>
                 </div>
                 <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /><span>All-Time Leaders</span></h3><Podium data={allTimeRankings} /></div>
                 <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>Full Rankings by Phase</span></h3>
+                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>Full Rankings</span></h3>
+                  <p className="text-xs text-slate-500 mb-3">Includes: Fall 2025, Smart Defaults Phase 1, PowerDown Olympics, Phase 2+</p>
                   <div className="space-y-2">
-                    {(showAllTime ? allTimeRankings : allTimeRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={maxAllTimePoints} showPhases />)}
+                    {(showAllTime ? allTimeRankings : allTimeRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={maxAllTimePoints} showBreakdown pointsKey="total" />)}
                   </div>
                   {allTimeRankings.length > 20 && (
-                    <button 
-                      onClick={() => setShowAllTime(!showAllTime)}
-                      className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition"
-                    >
+                    <button onClick={() => setShowAllTime(!showAllTime)} className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition">
                       {showAllTime ? `Show Less` : `Show All ${allTimeRankings.length} Students`}
                     </button>
                   )}
@@ -386,9 +632,10 @@
               </div>
             )}
 
+            {/* HALLS */}
             {activeTab === 'halls' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Trophy" className="w-5 h-5 text-yellow-500" /><span>All 8 Halls - Overall</span></h2><div className="grid gap-2">{hallsAllTime.map((h, i) => <HallCard key={i} hall={h} rank={i + 1} maxPoints={maxHallPointsAll} />)}</div></div>
+                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Trophy" className="w-5 h-5 text-yellow-500" /><span>All Halls - Overall</span></h2><div className="grid gap-2">{hallsAllTime.map((h, i) => <HallCard key={i} hall={h} rank={i + 1} maxPoints={maxHallPointsAll} />)}</div></div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-xl p-5 border border-pink-100"><h3 className="text-base font-bold text-pink-800 mb-3">👩 Women's Halls</h3><div className="space-y-2">{hallsAllTime.filter(h => h.name.endsWith('w')).map((h, i) => (<div key={h.name} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-pink-100"><div className="flex items-center gap-2"><span className={`w-7 h-7 rounded-lg bg-gradient-to-br ${getHallColor(h.name).bg} flex items-center justify-center font-bold text-white text-sm shadow`}>{i + 1}</span><span className="font-semibold text-slate-700">{h.name}</span></div><span className="font-black text-pink-600">{h.points} pts</span></div>))}</div></div>
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl p-5 border border-blue-100"><h3 className="text-base font-bold text-blue-800 mb-3">👨 Men's Halls</h3><div className="space-y-2">{hallsAllTime.filter(h => h.name.endsWith('m')).map((h, i) => (<div key={h.name} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-blue-100"><div className="flex items-center gap-2"><span className={`w-7 h-7 rounded-lg bg-gradient-to-br ${getHallColor(h.name).bg} flex items-center justify-center font-bold text-white text-sm shadow`}>{i + 1}</span><span className="font-semibold text-slate-700">{h.name}</span></div><span className="font-black text-blue-600">{h.points} pts</span></div>))}</div></div>
@@ -405,11 +652,22 @@
               </div>
             )}
 
-            {activeTab === 'steps' && <ChallengeTab iconName="Footprints" title="Green Steps Challenge" subtitle="Points earned by walking • Up to 10 pts/day" color="from-green-500 via-emerald-500 to-teal-500" data={data?.challenges?.steps} pointsKey="total" />}
-            {activeTab === 'bottles' && <ChallengeTab iconName="Recycle" title="Bottle & Can Disposal" subtitle="Points for recycling • 5 pts/submission" color="from-blue-500 via-cyan-500 to-teal-500" data={data?.challenges?.bottles} pointsKey="total" />}
-            {activeTab === 'cutlery' && <ChallengeTab iconName="UtensilsCrossed" title="Opt-Out of Plastic Cutlery" subtitle="Decline plastic cutlery • 2 pts/submission" color="from-purple-500 via-violet-500 to-indigo-500" data={data?.challenges?.cutlery} pointsKey="total" />}
-            {activeTab === 'aclights' && <ChallengeTab iconName="Lightbulb" title="AC & Lights Off Challenge" subtitle="Turn off AC and lights before class • 10 pts/day" color="from-yellow-500 via-amber-500 to-orange-500" data={data?.challenges?.acLights} pointsKey="total" />}
-            {activeTab === 'screentime' && <ChallengeTab iconName="Smartphone" title="Screen Time Challenge" subtitle="Reduce screen time • 3-10 pts/day" color="from-violet-500 via-purple-500 to-fuchsia-500" data={data?.challenges?.screenTime} pointsKey="total" />}
+            {/* CHALLENGES (Accordion) */}
+            {activeTab === 'challenges' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 text-white">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-xl"><Icon name="Target" className="w-6 h-6" /></div>
+                    <div>
+                      <h2 className="text-xl font-bold">Challenge Leaderboards</h2>
+                      <p className="text-white/80 text-sm">See top performers in each challenge category</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <ChallengeAccordion challenges={data?.challenges} />
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -417,14 +675,22 @@
             <div className="max-w-4xl mx-auto px-4 text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Icon name="Leaf" className="w-4 h-4 text-emerald-400" />
-                <span className="font-semibold text-white">Smart Defaults Challenge</span>
+                <span className="font-semibold text-white">Green Living Challenge</span>
               </div>
               <p className="text-xs">AUS Sustainability Office × Student Residential Life</p>
               <p className="text-xs text-slate-500 mt-1">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Green Living Guide Button (Left) */}
+          <a href={CONFIG.GREEN_LIVING_GUIDE_URL} target="_blank" rel="noopener noreferrer"
+            className="fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 shadow-green-600/40 hover:shadow-green-600/50 text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
+            <Icon name="BookOpen" className="w-5 h-5" />
+            <span className="hidden sm:inline">Green Living Guide</span>
+            <span className="sm:hidden">Guide</span>
+          </a>
+
+          {/* Submit Button (Right) */}
           <a href={CONFIG.FORM_URL} target="_blank" rel="noopener noreferrer"
             className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/40 hover:shadow-emerald-500/50 text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
             <Icon name="Leaf" className="w-5 h-5" />
