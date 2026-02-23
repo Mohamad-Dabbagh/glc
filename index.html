@@ -18,24 +18,35 @@
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
     @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
     .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+    @keyframes fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-up { animation: fade-up 0.35s ease-out both; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.1s; }
+    .fade-up-3 { animation-delay: 0.15s; }
+    .heatmap-cell { transition: all 0.15s ease; }
+    .heatmap-cell:hover { transform: scale(1.6); z-index: 10; }
   </style>
 </head>
 <body>
   <div id="root"></div>
   
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
     
     // =====================================================
     // CONFIGURATION
     // =====================================================
     const CONFIG = {
-      API_URL: "https://script.google.com/macros/s/AKfycbzXKyI0jyDvlzXGce522pBybzn33mmOYWiXi8ZrmgwuKdumjZI1hX1FSz5eZsM8VoDvgg/exec",
-      FORM_URL: "https://docs.google.com/forms/d/e/1FAIpQLSf5QGBOligt_emBLdADbw8l7OJgBLRWJdiOtL5EbDIPbthPqw/viewform",
+      SD_API: "https://script.google.com/macros/s/AKfycbzXKyI0jyDvlzXGce522pBybzn33mmOYWiXi8ZrmgwuKdumjZI1hX1FSz5eZsM8VoDvgg/exec",
+      SD_FORM: "https://docs.google.com/forms/d/e/1FAIpQLSf5QGBOligt_emBLdADbw8l7OJgBLRWJdiOtL5EbDIPbthPqw/viewform",
+      RR_API: "https://script.google.com/macros/s/AKfycbwF185kvqmzJUzbKgj9lvTvh984mTplRd9-JhfBYbqHX4IRYDJQ_MIZYsf0HgNqsbqC/exec",
+      RR_FORM: "https://forms.gle/AY87r3WTeP7kh5VF9",
       GREEN_LIVING_GUIDE_URL: "https://drive.google.com/file/d/1Yr5pnEfle_s1_xOEvGQua37iEYX7IF2v/view?usp=sharing",
     };
     
-    // PowerDown Olympics Phase 1 Results (Fair Scoring - All 27 participants)
+    // =====================================================
+    // POWERDOWN OLYMPICS HARDCODED DATA
+    // =====================================================
     const POWERDOWN_DATA = [
       { name: "Mohammad Ayman Suhail", email: "b00112329@aus.edu", hall: "KLm", acPoints: 270, screenPoints: 263, total: 533 },
       { name: "Yara El Hajj", email: "g00105170@aus.edu", hall: "EFw", acPoints: 250, screenPoints: 243, total: 493 },
@@ -65,91 +76,55 @@
       { name: "Merry Gurji", email: "g00107439@aus.edu", hall: "GHw", acPoints: 10, screenPoints: 0, total: 10 },
       { name: "Laiba Ali", email: "g00105074@aus.edu", hall: "ABw", acPoints: 0, screenPoints: 3, total: 3 },
     ];
-    
     const POWERDOWN_STATS = { points: 3606, participants: 27, submissions: 551 };
     const POWERDOWN_PRIZES = "🥇 AED 300 • 🥈 AED 200 • 🥉 AED 100";
-    
-    // Helper to get PowerDown halls data
     const getPowerDownHalls = () => {
-      const hallMap = {};
-      POWERDOWN_DATA.forEach(s => {
-        if (!hallMap[s.hall]) hallMap[s.hall] = { name: s.hall, points: 0, participants: 0 };
-        hallMap[s.hall].points += s.total;
-        hallMap[s.hall].participants += 1;
-      });
-      return Object.values(hallMap).sort((a, b) => b.points - a.points);
+      const m = {};
+      POWERDOWN_DATA.forEach(s => { if (!m[s.hall]) m[s.hall] = { name: s.hall, points: 0, participants: 0 }; m[s.hall].points += s.total; m[s.hall].participants += 1; });
+      return Object.values(m).sort((a, b) => b.points - a.points);
     };
-    // =====================================================
 
-    // Icon component
+    // =====================================================
+    // SHARED COMPONENTS
+    // =====================================================
     const Icon = ({ name, className }) => {
-      const ref = React.useRef(null);
-      useEffect(() => {
-        if (ref.current) {
-          ref.current.innerHTML = '';
-          const icon = lucide.createElement(lucide.icons[name]);
-          icon.setAttribute('class', className || 'w-5 h-5');
-          ref.current.appendChild(icon);
-        }
-      }, [name, className]);
+      const ref = useRef(null);
+      useEffect(() => { if (ref.current && lucide.icons[name]) { ref.current.innerHTML = ''; const i = lucide.createElement(lucide.icons[name]); i.setAttribute('class', className || 'w-5 h-5'); ref.current.appendChild(i); } }, [name, className]);
       return <span ref={ref} className="inline-flex items-center justify-center" />;
     };
 
-    // Hall colors
     const hallColors = {
-      'IJw': { bg: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', medium: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300' },
-      'Iw': { bg: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', medium: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300' },
-      'EFw': { bg: 'from-blue-500 to-indigo-600', light: 'bg-blue-50', medium: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
-      'ABw': { bg: 'from-violet-500 to-purple-600', light: 'bg-violet-50', medium: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300' },
-      'GHw': { bg: 'from-pink-500 to-rose-600', light: 'bg-pink-50', medium: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-300' },
-      'KLm': { bg: 'from-amber-500 to-orange-600', light: 'bg-amber-50', medium: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300' },
-      'GHm': { bg: 'from-red-500 to-rose-600', light: 'bg-red-50', medium: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' },
-      'MNm': { bg: 'from-cyan-500 to-sky-600', light: 'bg-cyan-50', medium: 'bg-cyan-100', text: 'text-cyan-700', border: 'border-cyan-300' },
-      'PQm': { bg: 'from-indigo-500 to-violet-600', light: 'bg-indigo-50', medium: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-300' },
+      'IJw': { bg: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', medium: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300', gradient: 'from-emerald-500 to-teal-500' },
+      'Iw': { bg: 'from-emerald-500 to-teal-600', light: 'bg-emerald-50', medium: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-300', gradient: 'from-emerald-500 to-teal-500' },
+      'EFw': { bg: 'from-blue-500 to-indigo-600', light: 'bg-blue-50', medium: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300', gradient: 'from-blue-500 to-indigo-500' },
+      'ABw': { bg: 'from-violet-500 to-purple-600', light: 'bg-violet-50', medium: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300', gradient: 'from-violet-500 to-purple-500' },
+      'GHw': { bg: 'from-pink-500 to-rose-600', light: 'bg-pink-50', medium: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-300', gradient: 'from-pink-500 to-rose-500' },
+      'KLm': { bg: 'from-amber-500 to-orange-600', light: 'bg-amber-50', medium: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300', gradient: 'from-amber-500 to-orange-500' },
+      'GHm': { bg: 'from-red-500 to-rose-600', light: 'bg-red-50', medium: 'bg-red-100', text: 'text-red-700', border: 'border-red-300', gradient: 'from-red-500 to-rose-500' },
+      'MNm': { bg: 'from-cyan-500 to-sky-600', light: 'bg-cyan-50', medium: 'bg-cyan-100', text: 'text-cyan-700', border: 'border-cyan-300', gradient: 'from-cyan-500 to-sky-500' },
+      'PQm': { bg: 'from-indigo-500 to-violet-600', light: 'bg-indigo-50', medium: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-300', gradient: 'from-indigo-500 to-violet-500' },
     };
-    const getHallColor = (hall) => hallColors[hall] || { bg: 'from-slate-500 to-slate-600', light: 'bg-slate-50', medium: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300' };
+    const getHallColor = (h) => hallColors[h] || { bg: 'from-slate-500 to-slate-600', light: 'bg-slate-50', medium: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300', gradient: 'from-slate-500 to-slate-600' };
 
-    // Loading component
     const LoadingScreen = () => (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/50 to-teal-50/50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center animate-pulse-slow">
-            <Icon name="Leaf" className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-700 mb-2">Loading Leaderboard...</h2>
-          <p className="text-slate-500 text-sm">Fetching live data</p>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center"><div className="w-14 h-14 mx-auto mb-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center animate-pulse-slow"><Icon name="Leaf" className="w-7 h-7 text-white" /></div><p className="text-slate-500 text-sm">Loading data...</p></div>
       </div>
     );
-
-    // Error component
     const ErrorScreen = ({ error, onRetry }) => (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/50 to-orange-50/50 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-            <Icon name="AlertCircle" className="w-8 h-8 text-red-500" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-700 mb-2">Oops! Something went wrong</h2>
-          <p className="text-slate-500 text-sm mb-4">{error}</p>
-          <button onClick={onRetry} className="px-6 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition">Try Again</button>
-        </div>
+      <div className="flex items-center justify-center py-20 text-center px-4">
+        <div className="max-w-sm"><div className="w-14 h-14 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center"><Icon name="AlertCircle" className="w-7 h-7 text-red-500" /></div><p className="text-slate-600 font-semibold mb-2">Could not load data</p><p className="text-sm text-slate-400 mb-4">{error}</p><button onClick={onRetry} className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition">Try Again</button></div>
       </div>
     );
 
-    // Shared Components
     const RankBadge = ({ rank, size = 'md' }) => {
-      const sizes = { sm: { wrapper: 'w-7 h-7', text: 'text-xs' }, md: { wrapper: 'w-10 h-10', text: 'text-sm' } };
-      const s = sizes[size];
-      if (rank === 1) return (<div className={`${s.wrapper} rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-400/40`}><Icon name="Crown" className="w-4 h-4 text-yellow-900" /></div>);
-      if (rank === 2) return (<div className={`${s.wrapper} rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 flex items-center justify-center shadow-md`}><Icon name="Medal" className="w-4 h-4 text-slate-600" /></div>);
-      if (rank === 3) return (<div className={`${s.wrapper} rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 flex items-center justify-center shadow-md`}><Icon name="Award" className="w-4 h-4 text-amber-200" /></div>);
-      return (<div className={`${s.wrapper} rounded-full bg-slate-700 flex items-center justify-center`}><span className={`${s.text} font-bold text-slate-200`}>{rank}</span></div>);
+      const s = size === 'sm' ? { w: 'w-7 h-7', t: 'text-xs' } : { w: 'w-10 h-10', t: 'text-sm' };
+      if (rank === 1) return <div className={`${s.w} rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-400/40`}><Icon name="Crown" className="w-4 h-4 text-yellow-900" /></div>;
+      if (rank === 2) return <div className={`${s.w} rounded-full bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 flex items-center justify-center shadow-md`}><Icon name="Medal" className="w-4 h-4 text-slate-600" /></div>;
+      if (rank === 3) return <div className={`${s.w} rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800 flex items-center justify-center shadow-md`}><Icon name="Award" className="w-4 h-4 text-amber-200" /></div>;
+      return <div className={`${s.w} rounded-full bg-slate-700 flex items-center justify-center`}><span className={`${s.t} font-bold text-slate-200`}>{rank}</span></div>;
     };
-
-    const HallBadge = ({ hall }) => {
-      const colors = getHallColor(hall);
-      return <span className={`px-2 py-0.5 text-xs rounded-full font-semibold ${colors.medium} ${colors.text}`}>{hall}</span>;
-    };
+    const HallBadge = ({ hall }) => { const c = getHallColor(hall); return <span className={`px-2 py-0.5 text-xs rounded-full font-semibold ${c.medium} ${c.text}`}>{hall}</span>; };
 
     const Podium = ({ data }) => {
       const [first, second, third] = [data?.[0], data?.[1], data?.[2]];
@@ -195,222 +170,85 @@
       const hallName = hall.name || hall.hall;
       const points = hall.points || hall.totalPoints || 0;
       const students = hall.students || hall.participants || 0;
-      const percentage = maxPoints > 0 ? (points / maxPoints) * 100 : 0;
+      const pct = maxPoints > 0 ? (points / maxPoints) * 100 : 0;
       return (
         <div className={`relative overflow-hidden rounded-xl p-3 ${colors.light} border-2 ${colors.border} transition-all hover:scale-[1.01] hover:shadow-md`}>
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center shadow-md`}><span className="text-white font-black text-sm">{rank}</span></div>
-              <div><h3 className={`font-bold text-sm ${colors.text}`}>{hallName}</h3><p className="text-xs text-slate-500">{students} participant{students !== 1 ? 's' : ''}</p></div>
-            </div>
+            <div className="flex items-center gap-2"><div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colors.bg} flex items-center justify-center shadow-md`}><span className="text-white font-black text-sm">{rank}</span></div><div><h3 className={`font-bold text-sm ${colors.text}`}>{hallName}</h3><p className="text-xs text-slate-500">{students} participant{students !== 1 ? 's' : ''}</p></div></div>
             <div className="text-right"><p className={`text-xl font-black ${colors.text}`}>{points}</p><p className="text-xs text-slate-500">points</p></div>
           </div>
-          <div className="h-2 bg-white/70 rounded-full overflow-hidden"><div className={`h-full bg-gradient-to-r ${colors.bg} rounded-full transition-all duration-700`} style={{width:`${percentage}%`}} /></div>
+          <div className="h-2 bg-white/70 rounded-full overflow-hidden"><div className={`h-full bg-gradient-to-r ${colors.bg} rounded-full transition-all duration-700`} style={{width:`${pct}%`}} /></div>
         </div>
       );
     };
 
     const HallDropdown = ({ selected, onChange, halls }) => {
       const [open, setOpen] = useState(false);
-      const colors = getHallColor(selected);
+      const c = getHallColor(selected);
       return (
         <div className="relative">
-          <button onClick={() => setOpen(!open)} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${colors.medium} ${colors.text} font-semibold border-2 ${colors.border} hover:shadow-md transition-all`}>
-            {selected}<Icon name="ChevronDown" className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
-          </button>
-          {open && (
-            <div className="absolute top-full mt-2 left-0 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-20 min-w-32 max-h-64 overflow-y-auto">
-              {halls.map(h => (<button key={h} onClick={() => { onChange(h); setOpen(false); }} className={`w-full px-4 py-2 text-left hover:bg-slate-50 ${selected === h ? `${getHallColor(h).light} ${getHallColor(h).text} font-bold` : 'text-slate-700'} transition-colors`}>{h}</button>))}
-            </div>
-          )}
+          <button onClick={() => setOpen(!open)} className={`flex items-center gap-2 px-4 py-2 rounded-xl ${c.medium} ${c.text} font-semibold border-2 ${c.border} hover:shadow-md transition-all`}>{selected}<Icon name="ChevronDown" className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} /></button>
+          {open && <div className="absolute top-full mt-2 left-0 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-20 min-w-32 max-h-64 overflow-y-auto">{halls.map(h => (<button key={h} onClick={() => { onChange(h); setOpen(false); }} className={`w-full px-4 py-2 text-left hover:bg-slate-50 ${selected === h ? `${getHallColor(h).light} ${getHallColor(h).text} font-bold` : 'text-slate-700'} transition-colors`}>{h}</button>))}</div>}
         </div>
       );
     };
 
     const PrizesBanner = ({ prizes, color = "yellow" }) => (
       <div className={`bg-gradient-to-r ${color === 'yellow' ? 'from-yellow-50 to-amber-50 border-yellow-200' : 'from-cyan-50 to-teal-50 border-cyan-200'} border rounded-xl p-4 mb-6`}>
-        <div className="flex items-center gap-3">
-          <div className={`p-2 ${color === 'yellow' ? 'bg-yellow-100' : 'bg-cyan-100'} rounded-lg`}><Icon name="Gift" className={`w-5 h-5 ${color === 'yellow' ? 'text-yellow-600' : 'text-cyan-600'}`} /></div>
-          <div>
-            <h3 className={`font-bold ${color === 'yellow' ? 'text-yellow-800' : 'text-cyan-800'}`}>Prizes!</h3>
-            <p className={`text-sm ${color === 'yellow' ? 'text-yellow-700' : 'text-cyan-700'}`}>{prizes}</p>
-          </div>
-        </div>
+        <div className="flex items-center gap-3"><div className={`p-2 ${color === 'yellow' ? 'bg-yellow-100' : 'bg-cyan-100'} rounded-lg`}><Icon name="Gift" className={`w-5 h-5 ${color === 'yellow' ? 'text-yellow-600' : 'text-cyan-600'}`} /></div><div><h3 className={`font-bold ${color === 'yellow' ? 'text-yellow-800' : 'text-cyan-800'}`}>Prizes!</h3><p className={`text-sm ${color === 'yellow' ? 'text-yellow-700' : 'text-cyan-700'}`}>{prizes}</p></div></div>
       </div>
     );
 
-    // Collapsible Challenge Section
     const ChallengeAccordion = ({ challenges }) => {
-      const [openChallenge, setOpenChallenge] = useState(null);
-      
-      const challengeConfig = [
+      const [openCh, setOpenCh] = useState(null);
+      const config = [
         { id: 'steps', label: 'Green Steps', icon: 'Footprints', color: 'from-green-500 to-emerald-500', subtitle: 'Up to 10 pts/day', data: challenges?.steps },
         { id: 'bottles', label: 'Bottle & Can Disposal', icon: 'Recycle', color: 'from-blue-500 to-cyan-500', subtitle: '5 pts/submission', data: challenges?.bottles },
         { id: 'cutlery', label: 'Opt-Out of Plastic Cutlery', icon: 'UtensilsCrossed', color: 'from-purple-500 to-violet-500', subtitle: '2 pts/submission', data: challenges?.cutlery },
         { id: 'aclights', label: 'AC & Lights Off', icon: 'Lightbulb', color: 'from-yellow-500 to-amber-500', subtitle: '10 pts/day', data: challenges?.acLights },
         { id: 'screentime', label: 'Screen Time', icon: 'Smartphone', color: 'from-violet-500 to-purple-500', subtitle: '3-10 pts/day', data: challenges?.screenTime },
       ];
-      
       return (
-        <div className="space-y-3">
-          {challengeConfig.map(ch => (
-            <div key={ch.id} className="bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden">
-              <button 
-                onClick={() => setOpenChallenge(openChallenge === ch.id ? null : ch.id)}
-                className={`w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-all`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-gradient-to-r ${ch.color}`}>
-                    <Icon name={ch.icon} className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-semibold text-slate-800">{ch.label}</h3>
-                    <p className="text-xs text-slate-500">{ch.subtitle}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-slate-600">{ch.data?.length || 0} participants</span>
-                  <Icon name={openChallenge === ch.id ? "ChevronUp" : "ChevronDown"} className="w-5 h-5 text-slate-400" />
-                </div>
-              </button>
-              
-              {openChallenge === ch.id && (
-                <div className="border-t border-slate-100 p-4 bg-slate-50">
-                  {ch.data && ch.data.length > 0 ? (
-                    <>
-                      <Podium data={ch.data} />
-                      <div className="space-y-2 mt-4">
-                        {ch.data.slice(0, 10).map((s, i) => (
-                          <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={ch.data[0]?.total || 1} pointsKey="total" />
-                        ))}
-                      </div>
-                      {ch.data.length > 10 && (
-                        <p className="text-center text-slate-500 text-sm mt-3">+ {ch.data.length - 10} more participants</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <div className="space-y-3">{config.map(ch => (
+          <div key={ch.id} className="bg-white rounded-xl shadow-md border border-slate-100 overflow-hidden">
+            <button onClick={() => setOpenCh(openCh === ch.id ? null : ch.id)} className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-all">
+              <div className="flex items-center gap-3"><div className={`p-2 rounded-lg bg-gradient-to-r ${ch.color}`}><Icon name={ch.icon} className="w-5 h-5 text-white" /></div><div className="text-left"><h3 className="font-semibold text-slate-800">{ch.label}</h3><p className="text-xs text-slate-500">{ch.subtitle}</p></div></div>
+              <div className="flex items-center gap-3"><span className="text-sm font-semibold text-slate-600">{ch.data?.length || 0} participants</span><Icon name={openCh === ch.id ? "ChevronUp" : "ChevronDown"} className="w-5 h-5 text-slate-400" /></div>
+            </button>
+            {openCh === ch.id && <div className="border-t border-slate-100 p-4 bg-slate-50">{ch.data && ch.data.length > 0 ? (<><Podium data={ch.data} /><div className="space-y-2 mt-4">{ch.data.slice(0, 10).map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={ch.data[0]?.total || 1} pointsKey="total" />)}</div>{ch.data.length > 10 && <p className="text-center text-slate-500 text-sm mt-3">+ {ch.data.length - 10} more participants</p>}</>) : <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>}</div>}
+          </div>
+        ))}</div>
       );
     };
 
     // =====================================================
-    // MERGE FUNCTION: Combine API data with PowerDown
+    // MERGE FUNCTIONS (Smart Defaults + PowerDown)
     // =====================================================
     function mergeAllTimeData(apiStudents) {
-      // Create a map of all students by email (lowercase)
-      const studentMap = {};
-      
-      // Add API students first
-      apiStudents.forEach(s => {
-        const email = (s.email || '').toLowerCase();
-        const key = email || s.name.toLowerCase();
-        studentMap[key] = {
-          name: s.name,
-          email: email,
-          hall: s.hall,
-          fall: s.fall || 0,
-          sdP1: s.p1 || 0,
-          powerdown: 0,
-          p2plus: (s.p2 || 0) + (s.p3 || 0) + (s.p4 || 0),
-          total: s.total || 0
-        };
-      });
-      
-      // Add PowerDown data - merge by email
-      POWERDOWN_DATA.forEach(pd => {
-        const email = pd.email.toLowerCase();
-        if (studentMap[email]) {
-          // Existing student - add PowerDown points
-          studentMap[email].powerdown = pd.total;
-          studentMap[email].total += pd.total;
-          // Use PowerDown hall if not set
-          if (!studentMap[email].hall) studentMap[email].hall = pd.hall;
-        } else {
-          // New student from PowerDown only
-          studentMap[email] = {
-            name: pd.name,
-            email: email,
-            hall: pd.hall,
-            fall: 0,
-            sdP1: 0,
-            powerdown: pd.total,
-            p2plus: 0,
-            total: pd.total
-          };
-        }
-      });
-      
-      // Convert to array and sort by total
-      const merged = Object.values(studentMap)
-        .sort((a, b) => b.total - a.total)
-        .map((s, i) => ({ ...s, rank: i + 1 }));
-      
-      return merged;
+      const m = {};
+      apiStudents.forEach(s => { const k = (s.email || '').toLowerCase() || s.name.toLowerCase(); m[k] = { name: s.name, email: k, hall: s.hall, fall: s.fall || 0, sdP1: s.p1 || 0, powerdown: 0, p2plus: (s.p2||0)+(s.p3||0)+(s.p4||0), total: s.total || 0 }; });
+      POWERDOWN_DATA.forEach(pd => { const e = pd.email.toLowerCase(); if (m[e]) { m[e].powerdown = pd.total; m[e].total += pd.total; if (!m[e].hall) m[e].hall = pd.hall; } else { m[e] = { name: pd.name, email: e, hall: pd.hall, fall: 0, sdP1: 0, powerdown: pd.total, p2plus: 0, total: pd.total }; } });
+      return Object.values(m).sort((a, b) => b.total - a.total).map((s, i) => ({ ...s, rank: i + 1 }));
     }
-    
-    // Merge hall data
     function mergeHallData(apiHalls) {
-      const hallMap = {};
-      
-      // Start with API halls
-      apiHalls.forEach(h => {
-        hallMap[h.name] = { name: h.name, points: h.points || 0, students: h.students || 0 };
-      });
-      
-      // Add PowerDown hall points
-      POWERDOWN_DATA.forEach(pd => {
-        const hall = pd.hall;
-        if (hallMap[hall]) {
-          hallMap[hall].points += pd.total;
-        } else {
-          hallMap[hall] = { name: hall, points: pd.total, students: 1 };
-        }
-      });
-      
-      return Object.values(hallMap).sort((a, b) => b.points - a.points);
+      const m = {};
+      apiHalls.forEach(h => { m[h.name] = { name: h.name, points: h.points || 0, students: h.students || 0 }; });
+      POWERDOWN_DATA.forEach(pd => { if (m[pd.hall]) m[pd.hall].points += pd.total; else m[pd.hall] = { name: pd.hall, points: pd.total, students: 1 }; });
+      return Object.values(m).sort((a, b) => b.points - a.points);
     }
 
     // =====================================================
-    // MAIN APP COMPONENT
+    // ██████ SMART DEFAULTS VIEW
     // =====================================================
-    function App() {
+    function SmartDefaultsView({ data, loading, error, onRetry }) {
       const [activeTab, setActiveTab] = useState('current');
-      const [data, setData] = useState(null);
-      const [loading, setLoading] = useState(true);
-      const [error, setError] = useState(null);
       const [selectedHall, setSelectedHall] = useState('ABw');
       const [showAllCurrent, setShowAllCurrent] = useState(false);
       const [showAllTime, setShowAllTime] = useState(false);
 
-      // Fetch data
-      const fetchData = async () => {
-        try {
-          setLoading(true);
-          setError(null);
-          const response = await fetch(CONFIG.API_URL);
-          if (!response.ok) throw new Error('Failed to fetch data');
-          const json = await response.json();
-          if (json.error) throw new Error(json.error);
-          setData(json);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      useEffect(() => {
-        fetchData();
-      }, []);
-
       if (loading) return <LoadingScreen />;
-      if (error) return <ErrorScreen error={error} onRetry={fetchData} />;
+      if (error) return <ErrorScreen error={error} onRetry={onRetry} />;
+      if (!data) return null;
 
       const tabs = [
         { id: 'current', label: 'Phase 2', icon: 'Trophy', badge: 'LIVE' },
@@ -424,46 +262,318 @@
       const apiAllTimeRankings = data?.allTime?.students || [];
       const apiHallsAllTime = data?.allTime?.halls || [];
       const hallsCurrentPhase = data?.currentPhaseData?.halls || [];
-      
-      // Merge PowerDown into All-Time
       const allTimeRankings = mergeAllTimeData(apiAllTimeRankings);
       const hallsAllTime = mergeHallData(apiHallsAllTime);
-      
       const allHallNames = hallsAllTime.map(h => h.name);
-      
-      // Phase 1 Smart Defaults data (from API)
-      const phase1SmartDefaults = apiAllTimeRankings
-        .filter(st => st.p1 > 0)
-        .map((st, i) => ({ ...st, rank: i + 1, points: st.p1 }))
-        .sort((a, b) => b.points - a.points)
-        .map((st, i) => ({ ...st, rank: i + 1 }));
-      
-      // PowerDown leaderboard with ranks
+      const phase1SmartDefaults = apiAllTimeRankings.filter(st => st.p1 > 0).sort((a, b) => b.p1 - a.p1).map((st, i) => ({ ...st, rank: i + 1, points: st.p1 }));
       const powerdownRanked = POWERDOWN_DATA.map((s, i) => ({ ...s, rank: i + 1 }));
-
       const phaseLabels = { p1: 'Phase 1', p2: 'Phase 2', p3: 'Phase 3', p4: 'Phase 4' };
       const phaseDateLabels = { p1: 'Jan 16 – Feb 15', p2: 'Feb 16 – Mar 15', p3: 'Mar 16 – Apr 15', p4: 'Apr 16 – May 15' };
       const currentPhaseName = phaseLabels[data?.currentPhase] || 'Phase 2';
       const currentPhaseLabel = phaseDateLabels[data?.currentPhase] || 'Feb 16 – Mar 15';
-
       const maxCurrentPoints = currentPhaseRankings[0]?.points || 1;
       const maxAllTimePoints = allTimeRankings[0]?.total || 1;
-      const maxHallPointsCurrent = hallsCurrentPhase[0]?.points || 1;
       const maxHallPointsAll = hallsAllTime[0]?.points || 1;
-
       const hallStudentsCurrent = currentPhaseRankings.filter(s => s.hall === selectedHall);
       const hallRankCurrent = hallsCurrentPhase.findIndex(h => h.name === selectedHall) + 1;
       const hallRankAllTime = hallsAllTime.findIndex(h => h.name === selectedHall) + 1;
       const hallDataCurrent = hallsCurrentPhase.find(h => h.name === selectedHall);
       const hallDataAllTime = hallsAllTime.find(h => h.name === selectedHall);
+      const allTimeStats = { points: allTimeRankings.reduce((sum, s) => sum + s.total, 0), participants: allTimeRankings.length };
 
-      const lastUpdated = data?.lastUpdated || new Date().toISOString();
-      
-      // Calculate merged stats
-      const allTimeStats = {
-        points: allTimeRankings.reduce((sum, s) => sum + s.total, 0),
-        participants: allTimeRankings.length,
+      return (
+        <div>
+          {/* Sub-nav */}
+          <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-lg border-b border-slate-200 shadow-sm -mx-4 px-4">
+            <div className="flex gap-1 py-2 overflow-x-auto scrollbar-hide">
+              {tabs.map(tab => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-600 hover:bg-slate-100'}`}>
+                  <Icon name={tab.icon} className="w-4 h-4" /><span>{tab.label}</span>
+                  {tab.badge && <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${activeTab === tab.id ? 'bg-white/20' : 'bg-red-100 text-red-600'}`}>{tab.badge}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-6 pt-4">
+            {/* PHASE 2 */}
+            {activeTab === 'current' && <>
+              <PrizesBanner prizes="🥇 AED 200 • 🥈 AED 150 • 🥉 AED 100" />
+              <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-2xl p-5 text-white">
+                <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Calendar" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">{currentPhaseName}</h2><p className="text-white/80 text-sm">{currentPhaseLabel}</p></div></div><div className="px-3 py-1 bg-white/20 rounded-full text-sm font-bold">🔥 LIVE</div></div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[{ v: data?.currentPhaseData?.stats?.points || 0, l: 'Points' },{ v: data?.currentPhaseData?.stats?.participants || 0, l: 'Participants' },{ v: data?.currentPhaseData?.stats?.submissions || 0, l: 'Submissions' }].map((s,i) => <div key={i} className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{s.v}</p><p className="text-xs text-white/70">{s.l}</p></div>)}
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" />Top Performers</h3><Podium data={currentPhaseRankings} /></div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
+                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" />Full Rankings</h3>
+                <div className="space-y-2">{(showAllCurrent ? currentPhaseRankings : currentPhaseRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={maxCurrentPoints} />)}</div>
+                {currentPhaseRankings.length === 0 && <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>}
+                {currentPhaseRankings.length > 20 && <button onClick={() => setShowAllCurrent(!showAllCurrent)} className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition">{showAllCurrent ? 'Show Less' : `Show All ${currentPhaseRankings.length} Students`}</button>}
+              </div>
+            </>}
+
+            {/* PHASE 1 RECAP */}
+            {activeTab === 'phase1' && <>
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white"><div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Leaf" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">Smart Defaults – Phase 1</h2><p className="text-white/80 text-sm">Jan 16 – Feb 15, 2026</p></div></div></div>
+              <PrizesBanner prizes="🥇 AED 200 • 🥈 AED 150 • 🥉 AED 100" />
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" />Top Performers</h3><Podium data={phase1SmartDefaults} /></div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" />Full Rankings</h3><div className="space-y-2">{phase1SmartDefaults.slice(0, 15).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={phase1SmartDefaults[0]?.points || 1} />)}</div></div>
+              <div className="relative py-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-slate-200" /></div><div className="relative flex justify-center"><span className="bg-gradient-to-br from-slate-50 via-emerald-50/50 to-teal-50/50 px-4 text-slate-500 font-semibold">⚡ PowerDown Olympics</span></div></div>
+              <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 rounded-2xl p-5 text-white"><div className="flex items-center gap-3 mb-2"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Zap" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">PowerDown Olympics</h2><p className="text-white/80 text-sm">Jan 20 – Feb 15, 2026</p></div></div><div className="grid grid-cols-3 gap-3 mt-4">{[{ v: POWERDOWN_STATS.points.toLocaleString(), l: 'Points' },{ v: POWERDOWN_STATS.participants, l: 'Participants' },{ v: POWERDOWN_STATS.submissions, l: 'Submissions' }].map((s,i) => <div key={i} className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{s.v}</p><p className="text-xs text-white/70">{s.l}</p></div>)}</div></div>
+              <PrizesBanner prizes={POWERDOWN_PRIZES} color="cyan" />
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" />Top Performers</h3><Podium data={powerdownRanked} /></div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-cyan-500" />Full Rankings</h3><div className="space-y-2">{powerdownRanked.map((s, i) => <StudentRow key={i} student={s} maxPoints={powerdownRanked[0]?.total || 1} pointsKey="total" />)}</div></div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Users" className="w-5 h-5 text-blue-500" />Hall Rankings (PowerDown)</h3><div className="grid gap-2">{getPowerDownHalls().map((h, i) => <HallCard key={i} hall={h} rank={i + 1} maxPoints={getPowerDownHalls()[0]?.points || 1} />)}</div></div>
+            </>}
+
+            {/* ALL-TIME */}
+            {activeTab === 'alltime' && <>
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white"><div className="flex items-center gap-3 mb-4"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Trophy" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">All-Time Rankings</h2><p className="text-white/80 text-sm">Fall 2025 + Smart Defaults + PowerDown Olympics</p></div></div><div className="grid grid-cols-2 gap-3"><div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{allTimeStats.points.toLocaleString()}</p><p className="text-xs text-white/70">Total Points</p></div><div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{allTimeStats.participants}</p><p className="text-xs text-white/70">Participants</p></div></div></div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" />All-Time Leaders</h3><Podium data={allTimeRankings} /></div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
+                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" />Full Rankings</h3>
+                <p className="text-xs text-slate-500 mb-3">Includes: Fall 2025, Smart Defaults Phase 1, PowerDown Olympics, Phase 2+</p>
+                <div className="space-y-2">{(showAllTime ? allTimeRankings : allTimeRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={maxAllTimePoints} showBreakdown pointsKey="total" />)}</div>
+                {allTimeRankings.length > 20 && <button onClick={() => setShowAllTime(!showAllTime)} className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition">{showAllTime ? 'Show Less' : `Show All ${allTimeRankings.length} Students`}</button>}
+              </div>
+            </>}
+
+            {/* HALLS */}
+            {activeTab === 'halls' && <>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Trophy" className="w-5 h-5 text-yellow-500" />All Halls - Overall</h2><div className="grid gap-2">{hallsAllTime.map((h, i) => <HallCard key={i} hall={h} rank={i + 1} maxPoints={maxHallPointsAll} />)}</div></div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-xl p-5 border border-pink-100"><h3 className="text-base font-bold text-pink-800 mb-3">👩 Women's Halls</h3><div className="space-y-2">{hallsAllTime.filter(h => h.name.endsWith('w')).map((h, i) => (<div key={h.name} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-pink-100"><div className="flex items-center gap-2"><span className={`w-7 h-7 rounded-lg bg-gradient-to-br ${getHallColor(h.name).bg} flex items-center justify-center font-bold text-white text-sm shadow`}>{i+1}</span><span className="font-semibold text-slate-700">{h.name}</span></div><span className="font-black text-pink-600">{h.points} pts</span></div>))}</div></div>
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl p-5 border border-blue-100"><h3 className="text-base font-bold text-blue-800 mb-3">👨 Men's Halls</h3><div className="space-y-2">{hallsAllTime.filter(h => h.name.endsWith('m')).map((h, i) => (<div key={h.name} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-blue-100"><div className="flex items-center gap-2"><span className={`w-7 h-7 rounded-lg bg-gradient-to-br ${getHallColor(h.name).bg} flex items-center justify-center font-bold text-white text-sm shadow`}>{i+1}</span><span className="font-semibold text-slate-700">{h.name}</span></div><span className="font-black text-blue-600">{h.points} pts</span></div>))}</div></div>
+              </div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
+                <div className="flex items-center justify-between mb-4"><h3 className="text-base font-bold text-slate-800 flex items-center gap-2"><Icon name="Users" className="w-5 h-5 text-violet-500" />My Hall</h3>{allHallNames.length > 0 && <HallDropdown selected={selectedHall} onChange={setSelectedHall} halls={allHallNames} />}</div>
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div className={`p-4 rounded-xl ${getHallColor(selectedHall).light} border ${getHallColor(selectedHall).border}`}><p className="text-xs text-slate-500 mb-1">{currentPhaseName} Rank</p><p className={`text-3xl font-black ${getHallColor(selectedHall).text}`}>#{hallRankCurrent || '-'}</p><p className="text-sm text-slate-600">{hallDataCurrent?.points || 0} points</p></div>
+                  <div className={`p-4 rounded-xl ${getHallColor(selectedHall).light} border ${getHallColor(selectedHall).border}`}><p className="text-xs text-slate-500 mb-1">All-Time Rank</p><p className={`text-3xl font-black ${getHallColor(selectedHall).text}`}>#{hallRankAllTime || '-'}</p><p className="text-sm text-slate-600">{hallDataAllTime?.points || 0} points</p></div>
+                </div>
+                <h4 className="font-semibold text-slate-700 mb-2">Top in {selectedHall} ({currentPhaseName})</h4>
+                {hallStudentsCurrent.length > 0 ? <div className="space-y-2">{hallStudentsCurrent.slice(0, 5).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={hallStudentsCurrent[0]?.points || 1} />)}</div> : <p className="text-slate-400 text-sm py-4 text-center">No submissions yet.</p>}
+              </div>
+            </>}
+
+            {/* CHALLENGES */}
+            {activeTab === 'challenges' && <>
+              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 text-white"><div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Target" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">Challenge Leaderboards</h2><p className="text-white/80 text-sm">See top performers in each challenge category</p></div></div></div>
+              <ChallengeAccordion challenges={data?.challenges} />
+            </>}
+          </div>
+        </div>
+      );
+    }
+
+    // =====================================================
+    // ██████ RAMADAN RESET VIEW
+    // =====================================================
+    const BONUS_TASKS = [
+      { id: 'Iftar with friends', label: 'Iftar with friends', icon: 'Users', pts: 5 },
+      { id: 'Homemade meal', label: 'Homemade meal', icon: 'ChefHat', pts: 5 },
+      { id: 'Sharing food', label: 'Sharing food', icon: 'Heart', pts: 5 },
+      { id: 'Screen-free evening', label: 'Screen-free evening', icon: 'BookOpen', pts: 5 },
+      { id: 'Post-Iftar walk', label: 'Post-Iftar walk', icon: 'Footprints', pts: 5 },
+      { id: 'Room reset', label: 'Room reset', icon: 'Sparkles', pts: 5 },
+      { id: 'AUS Iftar', label: 'AUS Iftar', icon: 'Star', pts: 10 },
+    ];
+    function getStreak(checkins, daysSoFar) { let s = 0; for (let i = Math.min(daysSoFar - 1, checkins.length - 1); i >= 0; i--) { if (checkins[i]) s++; else break; } return s; }
+
+    function RamadanResetView({ data, loading, error, onRetry }) {
+      const [activeTab, setActiveTab] = useState('overview');
+      const [selectedEmail, setSelectedEmail] = useState(null);
+      const [searchQ, setSearchQ] = useState('');
+
+      if (loading) return <LoadingScreen />;
+      if (error) return <ErrorScreen error={error} onRetry={onRetry} />;
+      if (!data) return null;
+
+      const { students = [], halls = [], communityStats = {}, dates = [], daysSoFar = 0, totalDays = 26 } = data;
+      const selectedStudent = students.find(s => s.email === selectedEmail);
+      const filtered = searchQ.trim() ? students.filter(s => s.name.toLowerCase().includes(searchQ.toLowerCase()) || s.email.toLowerCase().includes(searchQ.toLowerCase())) : students;
+      const sortedByStreak = [...filtered].sort((a, b) => getStreak(b.checkins, daysSoFar) - getStreak(a.checkins, daysSoFar));
+      const sortedByPts = [...students].sort((a, b) => b.points.total - a.points.total);
+      const topStreaks = [...students].sort((a, b) => getStreak(b.checkins, daysSoFar) - getStreak(a.checkins, daysSoFar)).slice(0, 3);
+      const topHalls = halls.slice(0, 3);
+      const maxHP = halls[0]?.points || 1;
+
+      const tabs = [
+        { id: 'overview', label: 'Overview', icon: 'LayoutDashboard' },
+        { id: 'streaks', label: 'Streaks', icon: 'Flame' },
+        { id: 'halls', label: 'Halls', icon: 'Building2' },
+        { id: 'bonus', label: 'Bonus', icon: 'Award' },
+        { id: 'leaderboard', label: 'Leaderboard', icon: 'Trophy' },
+      ];
+
+      // Community Pulse Card
+      const Pulse = () => (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 fade-up">
+          {[
+            { icon: 'Droplets', color: 'text-blue-500', bg: 'bg-blue-50', value: communityStats.avgWater, label: 'Avg water yesterday' },
+            { icon: 'Moon', color: 'text-indigo-500', bg: 'bg-indigo-50', value: communityStats.avgSleep, label: 'Avg sleep' },
+            { icon: 'Utensils', color: 'text-amber-600', bg: 'bg-amber-50', value: communityStats.healthyEatingPct + '%', label: 'Healthy eating' },
+            { icon: 'ClipboardCheck', color: 'text-emerald-600', bg: 'bg-emerald-50', value: communityStats.checkinCount, label: 'Check-ins yesterday' },
+          ].map((s, i) => (
+            <div key={i} className="bg-white border border-slate-200/80 rounded-xl p-3 text-center shadow-sm">
+              <div className={`w-9 h-9 mx-auto mb-1.5 rounded-lg ${s.bg} flex items-center justify-center`}><Icon name={s.icon} className={`w-4 h-4 ${s.color}`} /></div>
+              <p className="text-xl font-extrabold text-slate-800">{s.value}</p>
+              <p className="text-xs text-slate-500">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      );
+
+      // Mini heatmap row
+      const HeatRow = ({ s }) => {
+        const streak = getStreak(s.checkins, daysSoFar);
+        const totalC = s.checkins.slice(0, daysSoFar).filter(Boolean).length;
+        const hc = getHallColor(s.hall);
+        return (
+          <button onClick={() => setSelectedEmail(selectedEmail === s.email ? null : s.email)}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:shadow-md text-left ${selectedEmail === s.email ? 'bg-amber-50 border-amber-300 shadow-md' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2"><p className="text-sm font-semibold text-slate-800 truncate">{s.name}</p><span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${hc.medium} ${hc.text}`}>{s.hall}</span></div>
+                <div className="flex items-center gap-2"><span className="text-xs text-slate-400">{totalC}d</span>{streak >= 3 && <span className="text-xs font-bold text-amber-500">🔥{streak}</span>}</div>
+              </div>
+              <div className="flex gap-[3px] flex-wrap">{(dates || []).slice(0, daysSoFar).map((d, i) => <div key={i} className={`heatmap-cell w-2.5 h-2.5 rounded-sm ${s.checkins[i] ? 'bg-emerald-400' : 'bg-slate-200'}`} />)}{(dates || []).slice(daysSoFar).map((d, i) => <div key={'f'+i} className="w-2.5 h-2.5 rounded-sm bg-slate-100" />)}</div>
+            </div>
+          </button>
+        );
       };
+
+      // Student detail
+      const Detail = () => {
+        if (!selectedStudent) return null;
+        const streak = getStreak(selectedStudent.checkins, daysSoFar);
+        const totalC = selectedStudent.checkins.slice(0, daysSoFar).filter(Boolean).length;
+        const { checkins: cP, bonus: bP, cooking: kP, total: tP } = selectedStudent.points;
+        return (
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg fade-up">
+            <div className="flex items-center justify-between mb-4"><div><h3 className="text-lg font-bold text-slate-800">{selectedStudent.name}</h3><p className="text-sm text-slate-500">{selectedStudent.hall} • {selectedStudent.email}</p></div><button onClick={() => setSelectedEmail(null)} className="p-2 hover:bg-slate-100 rounded-lg"><Icon name="X" className="w-5 h-5 text-slate-400" /></button></div>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[{ v: tP, l: 'Total', c: 'text-amber-600' },{ v: daysSoFar>0?Math.round(totalC/daysSoFar*100)+'%':'—', l: 'Consistency', c: 'text-emerald-600' },{ v: streak+'🔥', l: 'Streak', c: 'text-amber-500' },{ v: totalC+'/'+daysSoFar, l: 'Days', c: 'text-slate-700' }].map((s,i) => <div key={i} className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100"><p className={`text-lg font-extrabold ${s.c}`}>{s.v}</p><p className="text-xs text-slate-400">{s.l}</p></div>)}
+            </div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Daily Check-ins</p>
+            <div className="flex flex-wrap gap-1 mb-4">{(dates||[]).map((d,i) => { const dt=new Date(d); const past=i<daysSoFar; return <div key={i} className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${!past?'bg-slate-50 border border-slate-200 text-slate-300':selectedStudent.checkins[i]?'bg-emerald-100 text-emerald-700 border border-emerald-200':'bg-red-50 text-red-300 border border-red-200'} ${i===daysSoFar-1?'ring-2 ring-amber-400/50':''}`}>{dt.getDate()}</div>; })}</div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Bonus Tasks</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              {BONUS_TASKS.map(t => { const done=selectedStudent.bonusTasks.includes(t.id); return <div key={t.id} className={`flex items-center gap-1.5 p-2 rounded-xl border ${done?'bg-amber-50 border-amber-300':'bg-slate-50 border-slate-200 opacity-40'}`}><Icon name={t.icon} className={`w-3.5 h-3.5 ${done?'text-amber-600':'text-slate-300'}`} /><div><p className={`text-xs font-semibold truncate ${done?'text-slate-700':'text-slate-400'}`}>{t.label}</p><p className={`text-xs ${done?'text-amber-600':'text-slate-300'}`}>{t.pts}pts</p></div></div>; })}
+              <div className={`flex items-center gap-1.5 p-2 rounded-xl border ${selectedStudent.hasCookingVideo?'bg-amber-50 border-amber-300':'bg-slate-50 border-slate-200 opacity-40'}`}><Icon name="Video" className={`w-3.5 h-3.5 ${selectedStudent.hasCookingVideo?'text-amber-600':'text-slate-300'}`} /><div><p className={`text-xs font-semibold ${selectedStudent.hasCookingVideo?'text-slate-700':'text-slate-400'}`}>Cooking Video</p><p className={`text-xs ${selectedStudent.hasCookingVideo?'text-amber-600':'text-slate-300'}`}>20pts</p></div></div>
+            </div>
+            <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-sm"><div className="flex gap-3 text-slate-500"><span>Check-ins: <strong className="text-slate-700">{cP}</strong></span><span>Bonus: <strong className="text-slate-700">{bP}</strong></span><span>Cooking: <strong className="text-slate-700">{kP}</strong></span></div><span className="text-amber-600 font-extrabold text-lg">{tP} pts</span></div>
+          </div>
+        );
+      };
+
+      // Preview card for overview
+      const PreviewCard = ({ title, icon, iconColor, children, tabId }) => (
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm fade-up">
+          <div className="flex items-center justify-between mb-3"><h2 className="text-base font-bold text-slate-800 flex items-center gap-2"><Icon name={icon} className={`w-5 h-5 ${iconColor}`} />{title}</h2><button onClick={() => setActiveTab(tabId)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">View all <Icon name="ArrowRight" className="w-3 h-3" /></button></div>
+          {children}
+        </div>
+      );
+
+      return (
+        <div>
+          {/* Sub-nav */}
+          <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-lg border-b border-slate-200 shadow-sm -mx-4 px-4">
+            <div className="flex gap-1 py-2 overflow-x-auto scrollbar-hide">
+              {tabs.map(t => (
+                <button key={t.id} onClick={() => setActiveTab(t.id)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-600 hover:bg-slate-100'}`}>
+                  <Icon name={t.icon} className="w-4 h-4" /><span>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4">
+            {/* OVERVIEW */}
+            {activeTab === 'overview' && <>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Community Pulse — Yesterday</p>
+              <Pulse />
+              <PreviewCard title="Top Streaks" icon="Flame" iconColor="text-amber-500" tabId="streaks">
+                <div className="space-y-2">{topStreaks.map((s,i) => { const st=getStreak(s.checkins,daysSoFar); const tc=s.checkins.slice(0,daysSoFar).filter(Boolean).length; return <div key={s.email} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100"><RankBadge rank={i+1} size="sm" /><div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className="text-sm font-semibold text-slate-700 truncate">{s.name}</p><HallBadge hall={s.hall} /></div><p className="text-xs text-slate-400">{tc} days</p></div><p className="text-lg font-extrabold text-amber-500">🔥{st}</p></div>; })}</div>
+              </PreviewCard>
+              <PreviewCard title="Hall Standings" icon="Building2" iconColor="text-emerald-600" tabId="halls">
+                <div className="space-y-2">{topHalls.map((h,i) => { const hc=getHallColor(h.hall); return <div key={h.hall} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100"><div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${hc.gradient} flex items-center justify-center shadow`}><span className="text-white font-black text-sm">{i+1}</span></div><div className="flex-1"><div className="flex items-center justify-between mb-1"><h3 className={`font-bold text-sm ${hc.text}`}>{h.hall}</h3><span className="text-xs text-slate-400">{h.participants}p</span></div><div className="h-1.5 bg-slate-200 rounded-full overflow-hidden"><div className={`h-full bg-gradient-to-r ${hc.gradient} rounded-full`} style={{width:`${(h.points/maxHP)*100}%`}} /></div></div><p className={`text-lg font-extrabold ${hc.text}`}>{h.points}</p></div>; })}</div>
+              </PreviewCard>
+              <PreviewCard title="Top Points" icon="Trophy" iconColor="text-yellow-500" tabId="leaderboard">
+                <div className="space-y-2">{sortedByPts.slice(0,3).map((s,i) => <div key={s.email} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100"><RankBadge rank={i+1} size="sm" /><div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className="text-sm font-semibold text-slate-700 truncate">{s.name}</p><HallBadge hall={s.hall} /></div></div><p className="text-lg font-extrabold text-amber-500">{s.points.total} pts</p></div>)}</div>
+              </PreviewCard>
+            </>}
+
+            {/* STREAKS */}
+            {activeTab === 'streaks' && <>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Community Pulse — Yesterday</p>
+              <Pulse />
+              <div className="relative fade-up"><Icon name="Search" className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" /><input type="text" placeholder="Find your streak..." value={searchQ} onChange={e => setSearchQ(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/20 shadow-sm" /></div>
+              <div className="space-y-2">{sortedByStreak.map(s => <HeatRow key={s.email} s={s} />)}</div>
+              {selectedStudent && <Detail />}
+              {students.length === 0 && <p className="text-center text-slate-400 py-8">No submissions yet.</p>}
+            </>}
+
+            {/* HALLS */}
+            {activeTab === 'halls' && <>
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white fade-up"><div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Building2" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">Inter-Hall Competition</h2><p className="text-white/70 text-sm">Which hall leads the Ramadan Reset?</p></div></div></div>
+              <div className="space-y-2 fade-up">{halls.map((h, i) => { const hc=getHallColor(h.hall); return <div key={h.hall} className="bg-white border border-slate-100 rounded-xl p-4 hover:shadow-md transition-all"><div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${hc.gradient} flex items-center justify-center shadow-md`}><span className="text-white font-black text-sm">{i+1}</span></div><div className="flex-1"><div className="flex items-center justify-between mb-1"><div className="flex items-center gap-2"><h3 className={`font-bold ${hc.text}`}>{h.hall}</h3><span className="text-xs text-slate-400">{h.participants}p</span></div><p className={`text-lg font-extrabold ${hc.text}`}>{h.points}</p></div><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full bg-gradient-to-r ${hc.gradient} rounded-full`} style={{width:`${(h.points/maxHP)*100}%`}} /></div><div className="flex gap-4 mt-1 text-xs text-slate-400"><span>{h.totalCheckins} check-ins</span><span>{h.participants>0?Math.round(h.points/h.participants):0} avg pts</span></div></div></div></div>; })}</div>
+              <div className="grid md:grid-cols-2 gap-4 fade-up">
+                {[{ title: "Women's Halls", e: '👩', list: halls.filter(h=>h.hall.endsWith('w')), bg: 'from-pink-50 to-rose-50', bd: 'border-pink-100', ac: 'text-pink-600' },{ title: "Men's Halls", e: '👨', list: halls.filter(h=>h.hall.endsWith('m')), bg: 'from-blue-50 to-indigo-50', bd: 'border-blue-100', ac: 'text-blue-600' }].map(g => (
+                  <div key={g.title} className={`bg-gradient-to-br ${g.bg} rounded-2xl p-4 border ${g.bd}`}><h3 className="text-sm font-bold text-slate-700 mb-3">{g.e} {g.title}</h3><div className="space-y-2">{g.list.map((h,i) => <div key={h.hall} className="flex items-center justify-between p-2 bg-white/80 rounded-lg"><div className="flex items-center gap-2"><span className={`w-6 h-6 rounded-lg bg-gradient-to-br ${getHallColor(h.hall).gradient} flex items-center justify-center font-bold text-white text-xs`}>{i+1}</span><span className="font-semibold text-slate-700 text-sm">{h.hall}</span></div><span className={`font-extrabold text-sm ${g.ac}`}>{h.points} pts</span></div>)}</div></div>
+                ))}
+              </div>
+            </>}
+
+            {/* BONUS */}
+            {activeTab === 'bonus' && <>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Community Progress</p>
+              <p className="text-sm text-slate-500 mb-3">Each task can be completed once.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 fade-up">
+                {[...BONUS_TASKS, { id:'cooking', label:'Cooking Video', icon:'Video', pts:20 }].map(t => {
+                  const count = t.id==='cooking' ? students.filter(s=>s.hasCookingVideo).length : students.filter(s=>s.bonusTasks.includes(t.id)).length;
+                  const pct = students.length>0 ? Math.round(count/students.length*100) : 0;
+                  return <div key={t.id} className="bg-white border border-slate-100 rounded-xl p-3 text-center shadow-sm"><div className="w-9 h-9 mx-auto mb-1.5 rounded-lg bg-amber-50 border border-amber-200/50 flex items-center justify-center"><Icon name={t.icon} className="w-4 h-4 text-amber-500" /></div><p className="text-xs font-semibold text-slate-700 mb-1">{t.label}</p><div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-1"><div className="h-full bg-amber-400 rounded-full" style={{width:`${pct}%`}} /></div><p className="text-xs text-slate-400">{count}/{students.length}</p></div>;
+                })}
+              </div>
+            </>}
+
+            {/* LEADERBOARD */}
+            {activeTab === 'leaderboard' && <>
+              <div className="bg-amber-50 border border-amber-200/50 rounded-xl p-4 fade-up flex items-center gap-3"><div className="p-2 bg-amber-100/80 rounded-lg border border-amber-200/50"><Icon name="Info" className="w-4 h-4 text-amber-500" /></div><p className="text-sm text-slate-600">Points reflect consistency, not competition. The winner is chosen by reflection video.</p></div>
+              <div className="space-y-2 fade-up">{sortedByPts.map((s, i) => { const streak=getStreak(s.checkins,daysSoFar); const tc=s.checkins.slice(0,daysSoFar).filter(Boolean).length; return <div key={s.email} className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl hover:shadow-md transition-all"><RankBadge rank={i+1} /><div className="flex-1 min-w-0"><div className="flex items-center gap-2"><p className="text-sm font-semibold text-slate-800 truncate">{s.name}</p><HallBadge hall={s.hall} /></div><div className="flex items-center gap-3 mt-0.5"><span className="text-xs text-slate-400">{tc}d</span>{streak>=3&&<span className="text-xs text-amber-500">🔥{streak}</span>}<span className="text-xs text-slate-400">{s.bonusTasks.length}/7 bonus</span>{s.hasCookingVideo&&<span className="text-xs text-emerald-500">🎥</span>}</div></div><div className="text-right"><p className="text-lg font-black text-amber-600">{s.points.total}</p><p className="text-xs text-slate-400">pts</p></div></div>; })}</div>
+              {students.length === 0 && <p className="text-center text-slate-400 py-8">No submissions yet.</p>}
+            </>}
+          </div>
+        </div>
+      );
+    }
+
+    // =====================================================
+    // ██████ MAIN APP
+    // =====================================================
+    function App() {
+      const [challenge, setChallenge] = useState('ramadan');
+      const [sdData, setSdData] = useState(null);
+      const [sdLoading, setSdLoading] = useState(true);
+      const [sdError, setSdError] = useState(null);
+      const [rrData, setRrData] = useState(null);
+      const [rrLoading, setRrLoading] = useState(true);
+      const [rrError, setRrError] = useState(null);
+
+      const fetchSD = () => { setSdLoading(true); setSdError(null); fetch(CONFIG.SD_API).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error); setSdData(d); setSdLoading(false); }).catch(e => { setSdError(e.message); setSdLoading(false); }); };
+      const fetchRR = () => { setRrLoading(true); setRrError(null); fetch(CONFIG.RR_API).then(r => r.json()).then(d => { if (d.error) throw new Error(d.error); setRrData(d); setRrLoading(false); }).catch(e => { setRrError(e.message); setRrLoading(false); }); };
+
+      useEffect(() => { fetchSD(); fetchRR(); }, []);
+
+      const formUrl = challenge === 'smart' ? CONFIG.SD_FORM : CONFIG.RR_FORM;
+      const formLabel = challenge === 'smart' ? 'Log Your Actions' : 'Daily Check-in';
+      const formIcon = challenge === 'smart' ? 'Leaf' : 'Moon';
+      const lastUpdated = challenge === 'smart' ? (sdData?.lastUpdated || '') : (rrData?.lastUpdated || '');
 
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/50 to-teal-50/50 font-sans pb-24">
@@ -471,27 +581,22 @@
           <div className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white">
             <div className="absolute inset-0 opacity-20"><div className="absolute top-5 left-5 w-32 h-32 bg-white rounded-full blur-3xl" /><div className="absolute bottom-5 right-10 w-48 h-48 bg-yellow-300 rounded-full blur-3xl" /></div>
             <div className="relative max-w-4xl mx-auto px-4 py-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                  <Icon name="Leaf" className="w-8 h-8" />
-                </div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm"><Icon name="Leaf" className="w-8 h-8" /></div>
                 <div>
                   <p className="text-xs text-white/70 uppercase tracking-wider">AUS Sustainability × SRL</p>
                   <h1 className="text-xl font-black tracking-tight">Green Living Challenge</h1>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-lg border-b border-slate-200 shadow-sm">
-            <div className="max-w-4xl mx-auto px-4">
-              <div className="flex gap-1 py-2 overflow-x-auto scrollbar-hide">
-                {tabs.map(tab => (
-                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-600 hover:bg-slate-100'}`}>
-                    <Icon name={tab.icon} className="w-4 h-4" /><span>{tab.label}</span>
-                    {tab.badge && <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${activeTab === tab.id ? 'bg-white/20' : 'bg-red-100 text-red-600'}`}>{tab.badge}</span>}
+              {/* Challenge Switcher */}
+              <div className="flex gap-2">
+                {[
+                  { id: 'smart', label: 'Smart Defaults', icon: 'Leaf' },
+                  { id: 'ramadan', label: 'Ramadan Reset', icon: 'Moon' },
+                ].map(c => (
+                  <button key={c.id} onClick={() => setChallenge(c.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${challenge === c.id ? 'bg-white/20 text-white border border-white/20 shadow-lg' : 'text-white/50 hover:text-white/80 hover:bg-white/5 border border-transparent'}`}>
+                    <Icon name={c.icon} className="w-4 h-4" /><span>{c.label}</span>
                   </button>
                 ))}
               </div>
@@ -500,202 +605,29 @@
 
           {/* Content */}
           <div className="max-w-4xl mx-auto px-4 py-6">
-            
-            {/* PHASE 2 (Current) */}
-            {activeTab === 'current' && (
-              <div className="space-y-6">
-                <PrizesBanner prizes="🥇 AED 200 • 🥈 AED 150 • 🥉 AED 100" />
-                <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-2xl p-5 text-white">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Calendar" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">{currentPhaseName}</h2><p className="text-white/80 text-sm">{currentPhaseLabel}</p></div></div>
-                    <div className="px-3 py-1 bg-white/20 rounded-full text-sm font-bold">🔥 LIVE</div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{data?.currentPhaseData?.stats?.points || 0}</p><p className="text-xs text-white/70">Points</p></div>
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{data?.currentPhaseData?.stats?.participants || 0}</p><p className="text-xs text-white/70">Participants</p></div>
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{data?.currentPhaseData?.stats?.submissions || 0}</p><p className="text-xs text-white/70">Submissions</p></div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /><span>Top Performers</span></h3><Podium data={currentPhaseRankings} /></div>
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>Full Rankings</span></h3>
-                  <div className="space-y-2">
-                    {(showAllCurrent ? currentPhaseRankings : currentPhaseRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={maxCurrentPoints} />)}
-                  </div>
-                  {currentPhaseRankings.length === 0 && <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>}
-                  {currentPhaseRankings.length > 20 && (
-                    <button onClick={() => setShowAllCurrent(!showAllCurrent)} className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition">
-                      {showAllCurrent ? `Show Less` : `Show All ${currentPhaseRankings.length} Students`}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* PHASE 1 RECAP */}
-            {activeTab === 'phase1' && (
-              <div className="space-y-6">
-                {/* Smart Defaults Phase 1 */}
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-white/20 rounded-xl"><Icon name="Leaf" className="w-6 h-6" /></div>
-                    <div>
-                      <h2 className="text-xl font-bold">Smart Defaults – Phase 1</h2>
-                      <p className="text-white/80 text-sm">Jan 16 – Feb 15, 2026</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <PrizesBanner prizes="🥇 AED 200 • 🥈 AED 150 • 🥉 AED 100" />
-                
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /><span>Top Performers</span></h3>
-                  <Podium data={phase1SmartDefaults} />
-                </div>
-                
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>Full Rankings</span></h3>
-                  <div className="space-y-2">
-                    {phase1SmartDefaults.slice(0, 15).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={phase1SmartDefaults[0]?.points || 1} />)}
-                  </div>
-                  {phase1SmartDefaults.length === 0 && <p className="text-center text-slate-400 py-8">No data available</p>}
-                </div>
-
-                {/* Divider */}
-                <div className="relative py-4">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t-2 border-slate-200"></div></div>
-                  <div className="relative flex justify-center"><span className="bg-slate-50 px-4 text-slate-500 font-semibold">⚡ PowerDown Olympics</span></div>
-                </div>
-
-                {/* PowerDown Olympics Phase 1 */}
-                <div className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 rounded-2xl p-5 text-white">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-white/20 rounded-xl"><Icon name="Zap" className="w-6 h-6" /></div>
-                    <div>
-                      <h2 className="text-xl font-bold">PowerDown Olympics</h2>
-                      <p className="text-white/80 text-sm">Jan 20 – Feb 15, 2026 • Energy & Climate Theme</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 mt-4">
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{POWERDOWN_STATS.points.toLocaleString()}</p><p className="text-xs text-white/70">Points</p></div>
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{POWERDOWN_STATS.participants}</p><p className="text-xs text-white/70">Participants</p></div>
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{POWERDOWN_STATS.submissions}</p><p className="text-xs text-white/70">Submissions</p></div>
-                  </div>
-                </div>
-                
-                <PrizesBanner prizes={POWERDOWN_PRIZES} color="cyan" />
-                
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /><span>Top Performers</span></h3>
-                  <Podium data={powerdownRanked} />
-                </div>
-                
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-cyan-500" /><span>Full Rankings</span></h3>
-                  <div className="space-y-2">
-                    {powerdownRanked.map((s, i) => <StudentRow key={i} student={s} maxPoints={powerdownRanked[0]?.total || 1} pointsKey="total" />)}
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Users" className="w-5 h-5 text-blue-500" /><span>Hall Rankings (PowerDown)</span></h3>
-                  <div className="grid gap-2">
-                    {getPowerDownHalls().map((h, i) => <HallCard key={i} hall={h} rank={i + 1} maxPoints={getPowerDownHalls()[0]?.points || 1} />)}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ALL-TIME (Merged) */}
-            {activeTab === 'alltime' && (
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white">
-                  <div className="flex items-center gap-3 mb-4"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Trophy" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">All-Time Rankings</h2><p className="text-white/80 text-sm">Fall 2025 + Smart Defaults + PowerDown Olympics</p></div></div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{allTimeStats.points.toLocaleString()}</p><p className="text-xs text-white/70">Total Points</p></div>
-                    <div className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{allTimeStats.participants}</p><p className="text-xs text-white/70">Participants</p></div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" /><span>All-Time Leaders</span></h3><Podium data={allTimeRankings} /></div>
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" /><span>Full Rankings</span></h3>
-                  <p className="text-xs text-slate-500 mb-3">Includes: Fall 2025, Smart Defaults Phase 1, PowerDown Olympics, Phase 2+</p>
-                  <div className="space-y-2">
-                    {(showAllTime ? allTimeRankings : allTimeRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={maxAllTimePoints} showBreakdown pointsKey="total" />)}
-                  </div>
-                  {allTimeRankings.length > 20 && (
-                    <button onClick={() => setShowAllTime(!showAllTime)} className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition">
-                      {showAllTime ? `Show Less` : `Show All ${allTimeRankings.length} Students`}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* HALLS */}
-            {activeTab === 'halls' && (
-              <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Trophy" className="w-5 h-5 text-yellow-500" /><span>All Halls - Overall</span></h2><div className="grid gap-2">{hallsAllTime.map((h, i) => <HallCard key={i} hall={h} rank={i + 1} maxPoints={maxHallPointsAll} />)}</div></div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-xl p-5 border border-pink-100"><h3 className="text-base font-bold text-pink-800 mb-3">👩 Women's Halls</h3><div className="space-y-2">{hallsAllTime.filter(h => h.name.endsWith('w')).map((h, i) => (<div key={h.name} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-pink-100"><div className="flex items-center gap-2"><span className={`w-7 h-7 rounded-lg bg-gradient-to-br ${getHallColor(h.name).bg} flex items-center justify-center font-bold text-white text-sm shadow`}>{i + 1}</span><span className="font-semibold text-slate-700">{h.name}</span></div><span className="font-black text-pink-600">{h.points} pts</span></div>))}</div></div>
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl p-5 border border-blue-100"><h3 className="text-base font-bold text-blue-800 mb-3">👨 Men's Halls</h3><div className="space-y-2">{hallsAllTime.filter(h => h.name.endsWith('m')).map((h, i) => (<div key={h.name} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-blue-100"><div className="flex items-center gap-2"><span className={`w-7 h-7 rounded-lg bg-gradient-to-br ${getHallColor(h.name).bg} flex items-center justify-center font-bold text-white text-sm shadow`}>{i + 1}</span><span className="font-semibold text-slate-700">{h.name}</span></div><span className="font-black text-blue-600">{h.points} pts</span></div>))}</div></div>
-                </div>
-                <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                  <div className="flex items-center justify-between mb-4"><h3 className="text-base font-bold text-slate-800 flex items-center gap-2"><Icon name="Users" className="w-5 h-5 text-violet-500" /><span>My Hall</span></h3>{allHallNames.length > 0 && <HallDropdown selected={selectedHall} onChange={setSelectedHall} halls={allHallNames} />}</div>
-                  <div className="grid md:grid-cols-2 gap-4 mb-4">
-                    <div className={`p-4 rounded-xl ${getHallColor(selectedHall).light} border ${getHallColor(selectedHall).border}`}><p className="text-xs text-slate-500 mb-1">{currentPhaseName} Rank</p><p className={`text-3xl font-black ${getHallColor(selectedHall).text}`}>#{hallRankCurrent || '-'}</p><p className="text-sm text-slate-600">{hallDataCurrent?.points || 0} points</p></div>
-                    <div className={`p-4 rounded-xl ${getHallColor(selectedHall).light} border ${getHallColor(selectedHall).border}`}><p className="text-xs text-slate-500 mb-1">All-Time Rank</p><p className={`text-3xl font-black ${getHallColor(selectedHall).text}`}>#{hallRankAllTime || '-'}</p><p className="text-sm text-slate-600">{hallDataAllTime?.points || 0} points</p></div>
-                  </div>
-                  <h4 className="font-semibold text-slate-700 mb-2">Top in {selectedHall} ({currentPhaseName})</h4>
-                  {hallStudentsCurrent.length > 0 ? (<div className="space-y-2">{hallStudentsCurrent.slice(0, 5).map((s, i) => (<StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={hallStudentsCurrent[0]?.points || 1} />))}</div>) : (<p className="text-slate-400 text-sm py-4 text-center">No submissions yet. Be the first!</p>)}
-                </div>
-              </div>
-            )}
-
-            {/* CHALLENGES (Accordion) */}
-            {activeTab === 'challenges' && (
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 text-white">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white/20 rounded-xl"><Icon name="Target" className="w-6 h-6" /></div>
-                    <div>
-                      <h2 className="text-xl font-bold">Challenge Leaderboards</h2>
-                      <p className="text-white/80 text-sm">See top performers in each challenge category</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <ChallengeAccordion challenges={data?.challenges} />
-              </div>
-            )}
+            {challenge === 'smart' && <SmartDefaultsView data={sdData} loading={sdLoading} error={sdError} onRetry={fetchSD} />}
+            {challenge === 'ramadan' && <RamadanResetView data={rrData} loading={rrLoading} error={rrError} onRetry={fetchRR} />}
           </div>
 
           {/* Footer */}
           <div className="bg-slate-800 text-slate-300 py-6 mt-8">
             <div className="max-w-4xl mx-auto px-4 text-center">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Icon name="Leaf" className="w-4 h-4 text-emerald-400" />
-                <span className="font-semibold text-white">Green Living Challenge</span>
-              </div>
+              <div className="flex items-center justify-center gap-2 mb-2"><Icon name="Leaf" className="w-4 h-4 text-emerald-400" /><span className="font-semibold text-white">Green Living Challenge</span></div>
               <p className="text-xs">AUS Sustainability Office × Student Residential Life</p>
-              <p className="text-xs text-slate-500 mt-1">Last updated: {new Date(lastUpdated).toLocaleString()}</p>
+              {lastUpdated && <p className="text-xs text-slate-500 mt-1">Last updated: {new Date(lastUpdated).toLocaleString()}</p>}
             </div>
           </div>
 
-          {/* Green Living Guide Button (Left) */}
+          {/* Green Living Guide (Left) */}
           <a href={CONFIG.GREEN_LIVING_GUIDE_URL} target="_blank" rel="noopener noreferrer"
             className="fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 shadow-green-600/40 hover:shadow-green-600/50 text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
-            <Icon name="BookOpen" className="w-5 h-5" />
-            <span className="hidden sm:inline">Green Living Guide</span>
-            <span className="sm:hidden">Guide</span>
+            <Icon name="BookOpen" className="w-5 h-5" /><span className="hidden sm:inline">Green Living Guide</span><span className="sm:hidden">Guide</span>
           </a>
 
-          {/* Submit Button (Right) */}
-          <a href={CONFIG.FORM_URL} target="_blank" rel="noopener noreferrer"
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-500/40 hover:shadow-emerald-500/50 text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
-            <Icon name="Leaf" className="w-5 h-5" />
-            <span>Log Your Actions</span>
-            <Icon name="ExternalLink" className="w-4 h-4" />
+          {/* Submit Button (Right) - dynamic per challenge */}
+          <a href={formUrl} target="_blank" rel="noopener noreferrer"
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-gradient-to-r ${challenge === 'smart' ? 'from-emerald-500 to-teal-500 shadow-emerald-500/40' : 'from-emerald-600 to-teal-600 shadow-emerald-600/40'} text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all`}>
+            <Icon name={formIcon} className="w-5 h-5" /><span>{formLabel}</span><Icon name="ExternalLink" className="w-4 h-4" />
           </a>
         </div>
       );
