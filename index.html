@@ -33,20 +33,14 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
     
-    // =====================================================
-    // CONFIGURATION
-    // =====================================================
     const CONFIG = {
       SD_API: "https://script.google.com/macros/s/AKfycbzXKyI0jyDvlzXGce522pBybzn33mmOYWiXi8ZrmgwuKdumjZI1hX1FSz5eZsM8VoDvgg/exec",
       SD_FORM: "https://docs.google.com/forms/d/e/1FAIpQLSf5QGBOligt_emBLdADbw8l7OJgBLRWJdiOtL5EbDIPbthPqw/viewform",
       RR_API: "https://script.google.com/macros/s/AKfycbwF185kvqmzJUzbKgj9lvTvh984mTplRd9-JhfBYbqHX4IRYDJQ_MIZYsf0HgNqsbqC/exec",
-      RR_FORM: "https://forms.gle/AY87r3WTeP7kh5VF9",
+      RR_FORM: "https://forms.gle/1enpQ94RCaA2hdSf7",
       GREEN_LIVING_GUIDE_URL: "https://drive.google.com/file/d/1Yr5pnEfle_s1_xOEvGQua37iEYX7IF2v/view?usp=sharing",
     };
     
-    // =====================================================
-    // POWERDOWN OLYMPICS HARDCODED DATA
-    // =====================================================
     const POWERDOWN_DATA = [
       { name: "Mohammad Ayman Suhail", email: "b00112329@aus.edu", hall: "KLm", acPoints: 270, screenPoints: 263, total: 533 },
       { name: "Yara El Hajj", email: "g00105170@aus.edu", hall: "EFw", acPoints: 250, screenPoints: 243, total: 493 },
@@ -84,9 +78,7 @@
       return Object.values(m).sort((a, b) => b.points - a.points);
     };
 
-    // =====================================================
     // SHARED COMPONENTS
-    // =====================================================
     const Icon = ({ name, className }) => {
       const ref = useRef(null);
       useEffect(() => { if (ref.current && lucide.icons[name]) { ref.current.innerHTML = ''; const i = lucide.createElement(lucide.icons[name]); i.setAttribute('class', className || 'w-5 h-5'); ref.current.appendChild(i); } }, [name, className]);
@@ -155,7 +147,7 @@
               <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">Fall</p><p className="text-sm font-semibold text-slate-600">{student.fall || 0}</p></div>
               <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">SD P1</p><p className="text-sm font-semibold text-slate-600">{student.sdP1 || 0}</p></div>
               <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">PwrDn</p><p className="text-sm font-semibold text-cyan-600">{student.powerdown || 0}</p></div>
-              <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">P2+</p><p className="text-sm font-semibold text-slate-600">{student.p2plus || 0}</p></div>
+              <div className="text-center hidden sm:block px-2"><p className="text-xs text-slate-400">SD P2</p><p className="text-sm font-semibold text-slate-600">{student.p2plus || 0}</p></div>
               <div className="text-center border-l pl-3 border-slate-200"><p className="text-xs text-slate-400">Total</p><p className="text-lg font-black text-emerald-600">{points}</p></div>
             </div>
           ) : (
@@ -221,12 +213,10 @@
       );
     };
 
-    // =====================================================
-    // MERGE FUNCTIONS (Smart Defaults + PowerDown)
-    // =====================================================
+    // MERGE FUNCTIONS
     function mergeAllTimeData(apiStudents) {
       const m = {};
-      apiStudents.forEach(s => { const k = (s.email || '').toLowerCase() || s.name.toLowerCase(); m[k] = { name: s.name, email: k, hall: s.hall, fall: s.fall || 0, sdP1: s.p1 || 0, powerdown: 0, p2plus: (s.p2||0)+(s.p3||0)+(s.p4||0), total: s.total || 0 }; });
+      apiStudents.forEach(s => { const k = (s.email || '').toLowerCase() || s.name.toLowerCase(); m[k] = { name: s.name, email: k, hall: s.hall, fall: s.fall || 0, sdP1: s.p1 || 0, powerdown: 0, p2plus: (s.p2||0), total: s.total || 0 }; });
       POWERDOWN_DATA.forEach(pd => { const e = pd.email.toLowerCase(); if (m[e]) { m[e].powerdown = pd.total; m[e].total += pd.total; if (!m[e].hall) m[e].hall = pd.hall; } else { m[e] = { name: pd.name, email: e, hall: pd.hall, fall: 0, sdP1: 0, powerdown: pd.total, p2plus: 0, total: pd.total }; } });
       return Object.values(m).sort((a, b) => b.total - a.total).map((s, i) => ({ ...s, rank: i + 1 }));
     }
@@ -237,9 +227,7 @@
       return Object.values(m).sort((a, b) => b.points - a.points);
     }
 
-    // =====================================================
     // ██████ SMART DEFAULTS VIEW
-    // =====================================================
     function SmartDefaultsView({ data, loading, error, onRetry }) {
       const [activeTab, setActiveTab] = useState('current');
       const [selectedHall, setSelectedHall] = useState('ABw');
@@ -251,26 +239,28 @@
       if (!data) return null;
 
       const tabs = [
-        { id: 'current', label: 'Phase 2', icon: 'Trophy', badge: 'LIVE' },
+        { id: 'current', label: 'Phase 2', icon: 'Trophy', badge: 'DONE' },
         { id: 'phase1', label: 'Phase 1 Recap', icon: 'History' },
         { id: 'alltime', label: 'All-Time', icon: 'Star' },
         { id: 'halls', label: 'Halls', icon: 'Users' },
         { id: 'challenges', label: 'Challenges', icon: 'Target' },
       ];
 
-      const currentPhaseRankings = data?.currentPhaseData?.students || [];
       const apiAllTimeRankings = data?.allTime?.students || [];
       const apiHallsAllTime = data?.allTime?.halls || [];
-      const hallsCurrentPhase = data?.currentPhaseData?.halls || [];
       const allTimeRankings = mergeAllTimeData(apiAllTimeRankings);
       const hallsAllTime = mergeHallData(apiHallsAllTime);
       const allHallNames = hallsAllTime.map(h => h.name);
+      // Phase 2 extracted from all-time data (not from currentPhaseData which may have moved to Phase 3)
+      const currentPhaseRankings = apiAllTimeRankings.filter(st => (st.p2 || 0) > 0).sort((a, b) => (b.p2 || 0) - (a.p2 || 0)).map((st, i) => ({ ...st, rank: i + 1, points: st.p2 || 0 }));
+      const phase2HallMap = {};
+      currentPhaseRankings.forEach(s => { if (!phase2HallMap[s.hall]) phase2HallMap[s.hall] = { name: s.hall, points: 0, students: 0 }; phase2HallMap[s.hall].points += s.points; phase2HallMap[s.hall].students += 1; });
+      const hallsCurrentPhase = Object.values(phase2HallMap).sort((a, b) => b.points - a.points);
+      const phase2Stats = { points: currentPhaseRankings.reduce((sum, s) => sum + s.points, 0), participants: currentPhaseRankings.length };
       const phase1SmartDefaults = apiAllTimeRankings.filter(st => st.p1 > 0).sort((a, b) => b.p1 - a.p1).map((st, i) => ({ ...st, rank: i + 1, points: st.p1 }));
       const powerdownRanked = POWERDOWN_DATA.map((s, i) => ({ ...s, rank: i + 1 }));
-      const phaseLabels = { p1: 'Phase 1', p2: 'Phase 2', p3: 'Phase 3', p4: 'Phase 4' };
-      const phaseDateLabels = { p1: 'Jan 16 – Feb 15', p2: 'Feb 16 – Mar 15', p3: 'Mar 16 – Apr 15', p4: 'Apr 16 – May 15' };
-      const currentPhaseName = phaseLabels[data?.currentPhase] || 'Phase 2';
-      const currentPhaseLabel = phaseDateLabels[data?.currentPhase] || 'Feb 16 – Mar 15';
+      const currentPhaseName = 'Phase 2';
+      const currentPhaseLabel = 'Feb 16 – Mar 15';
       const maxCurrentPoints = currentPhaseRankings[0]?.points || 1;
       const maxAllTimePoints = allTimeRankings[0]?.total || 1;
       const maxHallPointsAll = hallsAllTime[0]?.points || 1;
@@ -283,34 +273,45 @@
 
       return (
         <div>
-          {/* Sub-nav */}
           <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-lg border-b border-slate-200 shadow-sm -mx-4 px-4">
             <div className="flex gap-1 py-2 overflow-x-auto scrollbar-hide">
               {tabs.map(tab => (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30' : 'text-slate-600 hover:bg-slate-100'}`}>
                   <Icon name={tab.icon} className="w-4 h-4" /><span>{tab.label}</span>
-                  {tab.badge && <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${activeTab === tab.id ? 'bg-white/20' : 'bg-red-100 text-red-600'}`}>{tab.badge}</span>}
+                  {tab.badge && <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${activeTab === tab.id ? 'bg-white/20' : tab.badge === 'DONE' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>{tab.badge}</span>}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="space-y-6 pt-4">
+            {/* ANNOUNCEMENT BANNER */}
+            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-2xl p-5 fade-up">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-100 rounded-xl flex-shrink-0"><Icon name="Megaphone" className="w-5 h-5 text-amber-600" /></div>
+                <div>
+                  <h3 className="font-bold text-amber-800 mb-1">Smart Defaults Phase 2 is now complete!</h3>
+                  <p className="text-sm text-amber-700 mb-2">The results below are preliminary and still being verified. Winners will be announced soon.</p>
+                  <p className="text-sm text-amber-700">Stay tuned for <strong>EcoSprint</strong>, a brand new campus-wide sustainability challenge launching soon and open to all AUS students!</p>
+                </div>
+              </div>
+            </div>
+
             {/* PHASE 2 */}
             {activeTab === 'current' && <>
               <PrizesBanner prizes="🥇 AED 200 • 🥈 AED 150 • 🥉 AED 100" />
-              <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 rounded-2xl p-5 text-white">
-                <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Calendar" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">{currentPhaseName}</h2><p className="text-white/80 text-sm">{currentPhaseLabel}</p></div></div><div className="px-3 py-1 bg-white/20 rounded-full text-sm font-bold">🔥 LIVE</div></div>
-                <div className="grid grid-cols-3 gap-3">
-                  {[{ v: data?.currentPhaseData?.stats?.points || 0, l: 'Points' },{ v: data?.currentPhaseData?.stats?.participants || 0, l: 'Participants' },{ v: data?.currentPhaseData?.stats?.submissions || 0, l: 'Submissions' }].map((s,i) => <div key={i} className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{s.v}</p><p className="text-xs text-white/70">{s.l}</p></div>)}
+              <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-5 text-white">
+                <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-3"><div className="p-2 bg-white/20 rounded-xl"><Icon name="Calendar" className="w-6 h-6" /></div><div><h2 className="text-xl font-bold">{currentPhaseName}</h2><p className="text-white/80 text-sm">{currentPhaseLabel}</p></div></div><div className="px-3 py-1 bg-white/20 rounded-full text-sm font-bold">✅ COMPLETE</div></div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[{ v: phase2Stats.points || 0, l: 'Points' },{ v: phase2Stats.participants || 0, l: 'Participants' }].map((s,i) => <div key={i} className="bg-white/10 rounded-lg p-3 text-center"><p className="text-2xl font-black">{s.v}</p><p className="text-xs text-white/70">{s.l}</p></div>)}
                 </div>
               </div>
-              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" />Top Performers</h3><Podium data={currentPhaseRankings} /></div>
+              <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" />Top Performers (Preliminary)</h3><Podium data={currentPhaseRankings} /></div>
               <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
-                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" />Full Rankings</h3>
+                <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" />Full Rankings (Preliminary)</h3>
                 <div className="space-y-2">{(showAllCurrent ? currentPhaseRankings : currentPhaseRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{...s, rank: i+1}} maxPoints={maxCurrentPoints} />)}</div>
-                {currentPhaseRankings.length === 0 && <p className="text-center text-slate-400 py-8">No submissions yet. Be the first!</p>}
+                {currentPhaseRankings.length === 0 && <p className="text-center text-slate-400 py-8">No submissions yet.</p>}
                 {currentPhaseRankings.length > 20 && <button onClick={() => setShowAllCurrent(!showAllCurrent)} className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition">{showAllCurrent ? 'Show Less' : `Show All ${currentPhaseRankings.length} Students`}</button>}
               </div>
             </>}
@@ -335,7 +336,7 @@
               <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100"><h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2"><Icon name="Crown" className="w-5 h-5 text-yellow-500" />All-Time Leaders</h3><Podium data={allTimeRankings} /></div>
               <div className="bg-white rounded-2xl shadow-xl p-5 border border-slate-100">
                 <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2"><Icon name="Star" className="w-5 h-5 text-emerald-500" />Full Rankings</h3>
-                <p className="text-xs text-slate-500 mb-3">Includes: Fall 2025, Smart Defaults Phase 1, PowerDown Olympics, Phase 2+</p>
+                <p className="text-xs text-slate-500 mb-3">Includes: Fall 2025, Smart Defaults Phase 1, PowerDown Olympics, Phase 2</p>
                 <div className="space-y-2">{(showAllTime ? allTimeRankings : allTimeRankings.slice(0, 20)).map((s, i) => <StudentRow key={i} student={{ ...s, rank: i + 1 }} maxPoints={maxAllTimePoints} showBreakdown pointsKey="total" />)}</div>
                 {allTimeRankings.length > 20 && <button onClick={() => setShowAllTime(!showAllTime)} className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold rounded-lg transition">{showAllTime ? 'Show Less' : `Show All ${allTimeRankings.length} Students`}</button>}
               </div>
@@ -369,9 +370,7 @@
       );
     }
 
-    // =====================================================
     // ██████ RAMADAN RESET VIEW
-    // =====================================================
     const BONUS_TASKS = [
       { id: 'Iftar with friends', label: 'Iftar with friends', icon: 'Users', pts: 5 },
       { id: 'Homemade meal', label: 'Homemade meal', icon: 'ChefHat', pts: 5 },
@@ -409,7 +408,6 @@
         { id: 'leaderboard', label: 'Leaderboard', icon: 'Trophy' },
       ];
 
-      // Community Pulse Card
       const Pulse = () => (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 fade-up">
           {[
@@ -427,7 +425,6 @@
         </div>
       );
 
-      // Mini heatmap row
       const HeatRow = ({ s }) => {
         const streak = getStreak(s.checkins, daysSoFar);
         const totalC = s.checkins.slice(0, daysSoFar).filter(Boolean).length;
@@ -446,7 +443,6 @@
         );
       };
 
-      // Student detail
       const Detail = () => {
         if (!selectedStudent) return null;
         const streak = getStreak(selectedStudent.checkins, daysSoFar);
@@ -470,7 +466,6 @@
         );
       };
 
-      // Preview card for overview
       const PreviewCard = ({ title, icon, iconColor, children, tabId }) => (
         <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm fade-up">
           <div className="flex items-center justify-between mb-3"><h2 className="text-base font-bold text-slate-800 flex items-center gap-2"><Icon name={icon} className={`w-5 h-5 ${iconColor}`} />{title}</h2><button onClick={() => setActiveTab(tabId)} className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1">View all <Icon name="ArrowRight" className="w-3 h-3" /></button></div>
@@ -480,7 +475,6 @@
 
       return (
         <div>
-          {/* Sub-nav */}
           <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-lg border-b border-slate-200 shadow-sm -mx-4 px-4">
             <div className="flex gap-1 py-2 overflow-x-auto scrollbar-hide">
               {tabs.map(t => (
@@ -493,6 +487,24 @@
           </div>
 
           <div className="space-y-4 pt-4">
+            {/* REFLECTION VIDEO BANNER */}
+            <div className="bg-gradient-to-r from-emerald-800 to-teal-800 rounded-2xl p-5 text-white fade-up shadow-xl">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-white/20 rounded-xl flex-shrink-0"><Icon name="Video" className="w-6 h-6" /></div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg mb-1">Ramadan Reset has ended. Submit your final reflection!</h3>
+                  <p className="text-sm text-emerald-200 mb-3">Record a 60-90 second video sharing your journey. What changed? What surprised you? What will you keep doing? This is the primary criterion for selecting winners.</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <a href="https://forms.gle/1enpQ94RCaA2hdSf7" target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-emerald-800 font-bold rounded-xl hover:bg-emerald-50 transition-all shadow-lg">
+                      <Icon name="Upload" className="w-4 h-4" /><span>Submit Reflection Video</span>
+                    </a>
+                    <span className="text-sm text-amber-300 font-semibold">Deadline: Sunday, March 29 at midnight</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* OVERVIEW */}
             {activeTab === 'overview' && <>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1">Community Pulse — Yesterday</p>
@@ -553,9 +565,7 @@
       );
     }
 
-    // =====================================================
     // ██████ MAIN APP
-    // =====================================================
     function App() {
       const [challenge, setChallenge] = useState('ramadan');
       const [sdData, setSdData] = useState(null);
@@ -570,14 +580,14 @@
 
       useEffect(() => { fetchSD(); fetchRR(); }, []);
 
-      const formUrl = challenge === 'smart' ? CONFIG.SD_FORM : CONFIG.RR_FORM;
-      const formLabel = challenge === 'smart' ? 'Log Your Actions' : 'Daily Check-in';
-      const formIcon = challenge === 'smart' ? 'Leaf' : 'Moon';
+      const formUrl = CONFIG.RR_FORM;
+      const formLabel = 'Submit Reflection';
+      const formIcon = 'Video';
+      const showSubmitButton = challenge === 'ramadan';
       const lastUpdated = challenge === 'smart' ? (sdData?.lastUpdated || '') : (rrData?.lastUpdated || '');
 
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/50 to-teal-50/50 font-sans pb-24">
-          {/* Header */}
           <div className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white">
             <div className="absolute inset-0 opacity-20"><div className="absolute top-5 left-5 w-32 h-32 bg-white rounded-full blur-3xl" /><div className="absolute bottom-5 right-10 w-48 h-48 bg-yellow-300 rounded-full blur-3xl" /></div>
             <div className="relative max-w-4xl mx-auto px-4 py-5">
@@ -588,7 +598,6 @@
                   <h1 className="text-xl font-black tracking-tight">Green Living Challenge</h1>
                 </div>
               </div>
-              {/* Challenge Switcher */}
               <div className="flex gap-2">
                 {[
                   { id: 'smart', label: 'Smart Defaults', icon: 'Leaf' },
@@ -603,13 +612,11 @@
             </div>
           </div>
 
-          {/* Content */}
           <div className="max-w-4xl mx-auto px-4 py-6">
             {challenge === 'smart' && <SmartDefaultsView data={sdData} loading={sdLoading} error={sdError} onRetry={fetchSD} />}
             {challenge === 'ramadan' && <RamadanResetView data={rrData} loading={rrLoading} error={rrError} onRetry={fetchRR} />}
           </div>
 
-          {/* Footer */}
           <div className="bg-slate-800 text-slate-300 py-6 mt-8">
             <div className="max-w-4xl mx-auto px-4 text-center">
               <div className="flex items-center justify-center gap-2 mb-2"><Icon name="Leaf" className="w-4 h-4 text-emerald-400" /><span className="font-semibold text-white">Green Living Challenge</span></div>
@@ -618,17 +625,15 @@
             </div>
           </div>
 
-          {/* Green Living Guide (Left) */}
           <a href={CONFIG.GREEN_LIVING_GUIDE_URL} target="_blank" rel="noopener noreferrer"
             className="fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 shadow-green-600/40 hover:shadow-green-600/50 text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
             <Icon name="BookOpen" className="w-5 h-5" /><span className="hidden sm:inline">Green Living Guide</span><span className="sm:hidden">Guide</span>
           </a>
 
-          {/* Submit Button (Right) - dynamic per challenge */}
-          <a href={formUrl} target="_blank" rel="noopener noreferrer"
-            className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-gradient-to-r ${challenge === 'smart' ? 'from-emerald-500 to-teal-500 shadow-emerald-500/40' : 'from-emerald-600 to-teal-600 shadow-emerald-600/40'} text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all`}>
+          {showSubmitButton && <a href={formUrl} target="_blank" rel="noopener noreferrer"
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 shadow-emerald-600/40 text-white font-bold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all">
             <Icon name={formIcon} className="w-5 h-5" /><span>{formLabel}</span><Icon name="ExternalLink" className="w-4 h-4" />
-          </a>
+          </a>}
         </div>
       );
     }
